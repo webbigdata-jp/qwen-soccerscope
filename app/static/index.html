@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-WYSVNC3TDM"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-WYSVNC3TDM');
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="msvalidate.01" content="40662D5BA70BBEC0B1E069CC25FCEF09" />
+<title>SoccerScope — FIFA World Cup 2026 YouTube Video Trends & Fan Reactions</title>
+<meta name="description" content="SoccerScope is a World Cup 2026 football video trend agent. Search viral YouTube soccer videos across countries, analyze fan comments, and generate reports, SNS posts, and shareable pages.">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<link rel="canonical" href="https://soccer.tubesaku.com/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SoccerScope">
+<meta property="og:title" content="SoccerScope — FIFA World Cup 2026 YouTube Video Trends">
+<meta property="og:description" content="Find World Cup 2026 football videos going viral across countries and turn fan reactions into reports, SNS posts, and web pages.">
+<meta property="og:url" content="https://soccer.tubesaku.com/">
+<meta property="og:image" content="https://webbigdata-jp.github.io/soccerscope/images/soccerscope-ogp.png">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="ja_JP">
+<meta property="og:locale:alternate" content="zh_CN">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="SoccerScope — FIFA World Cup 2026 YouTube Video Trends">
+<meta name="twitter:description" content="Search viral World Cup 2026 soccer videos, fan comments, and YouTube trends across countries.">
+<meta name="twitter:image" content="https://webbigdata-jp.github.io/soccerscope/images/soccerscope-ogp.png">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebApplication",
+      "name": "SoccerScope",
+      "url": "https://qwen-soccer.tubesaku.com/",
+      "applicationCategory": "SportsApplication",
+      "operatingSystem": "Web",
+      "description": "AI agent for discovering FIFA World Cup 2026 football videos trending on YouTube across countries and summarizing fan reactions.",
+      "inLanguage": ["en", "ja", "zh"],
+      "isAccessibleForFree": true,
+      "about": [
+        {"@type": "Thing", "name": "FIFA World Cup 2026"},
+        {"@type": "Thing", "name": "YouTube football video trends"},
+        {"@type": "Thing", "name": "fan comment sentiment analysis"}
+      ],
+      "creator": {"@type": "Organization", "name": "TubeSaku", "url": "https://tubesaku.com/"}
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is SoccerScope?",
+          "acceptedAnswer": {"@type": "Answer", "text": "SoccerScope is an AI-powered World Cup 2026 football video trend agent that searches pre-analyzed YouTube videos across countries and summarizes fan reactions."}
+        },
+        {
+          "@type": "Question",
+          "name": "What data does SoccerScope use?",
+          "acceptedAnswer": {"@type": "Answer", "text": "SoccerScope uses TubeSaku's pre-analyzed YouTube football video data, including cross-country trend signals, video metadata, and fan-comment analysis."}
+        }
+      ]
+    }
+  ]
+}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+<style>
+  :root{
+    --ink:#0a0f0d; --ink-2:#0e1714; --surface:#111b17; --surface-2:#16221d;
+    --line:#23332c; --pitch:#16e08a; --pitch-dim:#0f8f59; --gold:#ffd23f;
+    --text:#f1f6f3; --muted:#8ba096; --muted-2:#5f7268;
+    --pos:#16e08a; --neg:#ff6b5e; --maxw:1080px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--ink);color:var(--text);font-family:"Zen Kaku Gothic New",sans-serif;line-height:1.7;-webkit-font-smoothing:antialiased;overflow-x:hidden;min-height:100vh}
+  .num{font-family:"Anton",sans-serif;letter-spacing:.01em;font-feature-settings:"tnum"}
+  a{color:var(--pitch)}
+
+  .field-bg{position:fixed;inset:0;z-index:0;opacity:.5;pointer-events:none}
+  .field-bg::before{content:"";position:absolute;inset:0;background:radial-gradient(900px 520px at 80% -12%,rgba(22,224,138,.10),transparent 60%),radial-gradient(680px 600px at 6% 112%,rgba(255,210,63,.06),transparent 55%)}
+  .field-lines{position:absolute;top:0;right:-8%;width:56%;height:100%;opacity:.14}
+
+  .wrap{position:relative;z-index:1;max-width:var(--maxw);margin:0 auto;padding:0 26px}
+
+  /* header */
+  header{padding:26px 0 6px;display:flex;align-items:center;justify-content:space-between;gap:14px}
+  .brand{display:flex;align-items:center;font-family:"Anton",sans-serif;font-size:24px;letter-spacing:.04em}
+  .brand .dot{color:var(--pitch);margin:0 .12ch}
+  .brand .lens{display:inline-block;width:12px;height:12px;border:3px solid var(--pitch);border-radius:50%;margin-left:7px;box-shadow:0 0 14px rgba(22,224,138,.6)}
+  .lang-toggle{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:5px 7px;cursor:pointer;font-size:12.5px;letter-spacing:.04em;color:var(--muted);transition:border-color .25s,color .25s}
+  .lang-toggle:hover{border-color:var(--pitch-dim);color:var(--text)}
+  .lang-toggle .globe{width:15px;height:15px;display:inline-block}
+  .lang-toggle b{font-family:"Anton";color:var(--pitch);letter-spacing:.06em}
+
+  /* intro */
+  .intro{padding:38px 0 26px}
+  .kicker{display:inline-flex;align-items:center;gap:9px;font-size:11.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--pitch);font-weight:700;margin-bottom:18px}
+  .kicker .pulse{width:8px;height:8px;border-radius:50%;background:var(--pitch);animation:pulse 2.2s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(22,224,138,.55)}70%{box-shadow:0 0 0 11px rgba(22,224,138,0)}100%{box-shadow:0 0 0 0 rgba(22,224,138,0)}}
+  .intro h1{font-weight:900;font-size:clamp(30px,5.2vw,56px);line-height:1.04;letter-spacing:-.01em;max-width:18ch}
+  .intro h1 em{font-style:normal;color:var(--pitch)}
+  .intro h1 .gold{color:var(--gold)}
+  .intro p.lead{margin-top:18px;max-width:54ch;font-size:clamp(14px,1.6vw,16.5px);color:var(--muted)}
+
+  /* form */
+  .panel{margin-top:8px;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:24px;box-shadow:0 30px 70px -46px rgba(0,0,0,.9)}
+  .field-label{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-2);margin-bottom:10px;display:block}
+  textarea#q{width:100%;min-height:96px;resize:vertical;background:var(--ink-2);border:1px solid var(--line);border-radius:12px;color:var(--text);font-family:inherit;font-size:15.5px;line-height:1.6;padding:14px 16px;outline:none;transition:border-color .2s}
+  textarea#q:focus{border-color:var(--pitch-dim)}
+  textarea#q::placeholder{color:var(--muted-2)}
+
+  .controls{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-top:18px;flex-wrap:wrap}
+  .seg{display:flex;flex-direction:column;gap:10px;flex:1;min-width:260px}
+  .seg .row{display:flex;gap:8px;flex-wrap:wrap}
+  .fmt{flex:1;min-width:120px;text-align:left;background:var(--ink-2);border:1px solid var(--line);border-radius:12px;padding:11px 13px;cursor:pointer;transition:border-color .2s,background .2s,transform .15s;color:var(--text)}
+  .fmt:hover{transform:translateY(-2px)}
+  .fmt.active{border-color:var(--pitch);background:linear-gradient(180deg,rgba(22,224,138,.10),rgba(22,224,138,.02))}
+  .fmt .ic{font-size:16px}
+  .fmt .nm{display:block;font-weight:700;font-size:13.5px;margin-top:4px}
+  .fmt .ds{display:block;font-size:11px;color:var(--muted-2);margin-top:2px;line-height:1.4}
+
+  .go{font-family:"Anton",sans-serif;letter-spacing:.06em;font-size:16px;background:var(--pitch);color:#06140d;border:none;border-radius:12px;padding:14px 28px;cursor:pointer;white-space:nowrap;transition:filter .2s,transform .15s;align-self:flex-end;box-shadow:0 10px 30px -12px rgba(22,224,138,.6)}
+  .go:hover{filter:brightness(1.08);transform:translateY(-2px)}
+  .go:disabled{filter:grayscale(.6) brightness(.7);cursor:not-allowed;transform:none;box-shadow:none}
+  .hint{font-size:11px;color:var(--muted-2);margin-top:12px;letter-spacing:.02em}
+
+  /* result */
+  .result{margin:34px 0 20px;display:none}
+  .result.show{display:block;animation:fade .5s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  .res-head{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:13px;margin-bottom:24px;flex-wrap:wrap}
+  .res-head .badge{font-family:"Anton";font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);background:var(--gold);padding:5px 11px;border-radius:999px}
+  .res-head .copyall{font-size:12px;color:var(--muted);background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:6px 13px;cursor:pointer;transition:color .2s,border-color .2s}
+  .res-head .copyall:hover{color:var(--pitch);border-color:var(--pitch-dim)}
+
+  /* loading */
+  .loading{display:none;align-items:center;gap:16px;padding:30px 4px;color:var(--muted)}
+  .loading.show{display:flex}
+  .scoreboard{font-family:"Anton";font-size:22px;color:var(--pitch);letter-spacing:.1em;min-width:54px}
+  .scoreboard span{display:inline-block;animation:flick 1.1s infinite}
+  .scoreboard span:nth-child(2){animation-delay:.15s}
+  @keyframes flick{0%,100%{opacity:.25}50%{opacity:1}}
+  .loading .lt{font-size:14px}
+
+  /* rendered markdown (report / webpage) */
+  .doc{font-size:15.5px;color:#e6ede9}
+  .doc.page{background:linear-gradient(180deg,var(--surface),var(--ink-2));border:1px solid var(--line);border-radius:18px;padding:40px 44px;position:relative;overflow:hidden}
+  .doc.page::before{content:"";position:absolute;top:-40px;left:-10%;width:60%;height:240px;background:radial-gradient(closest-side,rgba(22,224,138,.10),transparent);pointer-events:none}
+  .doc h1{font-weight:900;font-size:clamp(26px,4vw,40px);line-height:1.1;margin:6px 0 14px;letter-spacing:-.01em}
+  .doc h2{font-weight:900;font-size:clamp(19px,2.4vw,25px);margin:34px 0 12px;padding-top:8px;border-top:1px solid var(--line)}
+  .doc h3{font-weight:700;font-size:17px;margin:22px 0 8px}
+  .doc p{margin:12px 0;color:#dce6e1}
+  .doc a{text-decoration:none;border-bottom:1px solid rgba(22,224,138,.4)}
+  .doc a:hover{border-color:var(--pitch)}
+  .doc img{max-width:100%;width:420px;border-radius:12px;display:block;margin:14px 0;border:1px solid var(--line)}
+  .doc ul,.doc ol{margin:12px 0 12px 22px}
+  .doc li{margin:5px 0}
+  .doc blockquote{border-left:3px solid var(--pitch);background:var(--surface-2);padding:12px 18px;margin:16px 0;border-radius:0 10px 10px 0;color:#e6ede9}
+  .doc hr{border:none;border-top:1px solid var(--line);margin:26px 0}
+  .doc code{background:var(--ink-2);padding:2px 6px;border-radius:6px;font-size:.9em}
+  .doc strong{color:#fff}
+
+  /* SNS cards */
+  .posts{display:grid;gap:16px}
+  .post{background:var(--surface-2);border:1px solid var(--line);border-radius:14px;padding:18px 20px;position:relative}
+  .post .pn{position:absolute;top:14px;right:16px;font-family:"Anton";font-size:13px;color:var(--muted-2)}
+  .post .pc{font-size:15px;line-height:1.65;color:#e6ede9;white-space:pre-wrap}
+  .post .pc a{word-break:break-all}
+  .post .cp{margin-top:14px;font-size:11.5px;color:var(--muted);background:var(--ink-2);border:1px solid var(--line);border-radius:999px;padding:5px 13px;cursor:pointer;transition:color .2s,border-color .2s}
+  .post .cp:hover{color:var(--pitch);border-color:var(--pitch-dim)}
+
+  .err{display:none;color:var(--neg);background:rgba(255,107,94,.07);border:1px solid rgba(255,107,94,.3);border-radius:12px;padding:14px 18px;font-size:14px;margin-top:24px}
+  .err.show{display:block}
+
+  .seo-copy{margin:24px 0 8px;background:linear-gradient(180deg,var(--surface),var(--ink-2));border:1px solid var(--line);border-radius:18px;padding:24px;box-shadow:0 24px 60px -50px rgba(0,0,0,.8)}
+  .seo-copy h2{font-weight:900;font-size:clamp(20px,2.6vw,28px);line-height:1.15;margin-bottom:10px}
+  .seo-copy p{color:var(--muted);font-size:14.5px;max-width:76ch;margin:10px 0}
+  .tag-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:15px}
+  .tag-list span{font-size:11.5px;color:var(--text);border:1px solid var(--line);border-radius:999px;padding:6px 10px;background:var(--ink-2)}
+  .seo-links{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+  .seo-links a{font-size:13px;text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:8px 12px;color:var(--pitch)}
+  .seo-links a:hover{border-color:var(--pitch)}
+
+  footer{border-top:1px solid var(--line);margin-top:54px;padding:28px 0 56px;font-size:12px;color:var(--muted-2);letter-spacing:.04em;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  footer b{color:var(--muted)}
+  .powered-by{display:inline-flex;align-items:center;gap:5px}
+  .powered-by a{color:var(--pitch-dim);text-decoration:none;border-bottom:1px solid transparent;transition:color .2s,border-color .2s}
+  .powered-by a:hover{color:var(--pitch);border-color:var(--pitch)}
+  .site-links{display:flex;flex-direction:column;gap:5px}
+  .site-links a{color:var(--pitch-dim);text-decoration:none;border-bottom:1px solid transparent;transition:color .2s,border-color .2s}
+  .site-links a:hover{color:var(--pitch);border-color:var(--pitch)}
+
+  @media(max-width:640px){
+    .wrap{padding:0 16px}
+    .controls{flex-direction:column;align-items:stretch}
+    .go{align-self:stretch}
+    .doc.page{padding:26px 20px}
+    .fmt{min-width:100%}
+  }
+</style>
+</head>
+<body>
+
+<div class="field-bg" aria-hidden="true">
+  <svg class="field-lines" viewBox="0 0 600 800" fill="none" stroke="rgba(22,224,138,.35)" stroke-width="1.4">
+    <rect x="40" y="40" width="520" height="720" rx="4"/>
+    <line x1="40" y1="400" x2="560" y2="400"/>
+    <circle cx="300" cy="400" r="92"/>
+    <rect x="40" y="250" width="120" height="300"/>
+    <rect x="440" y="250" width="120" height="300"/>
+    <circle cx="300" cy="400" r="4" fill="rgba(22,224,138,.5)" stroke="none"/>
+  </svg>
+</div>
+
+<div class="wrap">
+
+  <header>
+    <div class="brand">SOCCER<span class="dot">·</span>SCOPE<span class="lens"></span></div>
+    <div class="lang-toggle" id="langToggle" role="button" tabindex="0">
+      <svg class="globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 2.5 15.5 0 18M12 3c-2.5 2.5-2.5 15.5 0 18"/>
+      </svg>
+      <span data-i18n="toggleLabel">日本語 / </span><b id="langTarget">EN</b>
+    </div>
+  </header>
+
+  <section class="intro">
+    <div class="kicker"><span class="pulse"></span><span data-i18n="kicker">Live football-buzz agent</span></div>
+    <h1 data-i18n="h1">FIFA World Cup 2026 <em>YouTube football trends</em><br>from every country, in <span class="gold">your</span> story.</h1>
+    <p class="lead" data-i18n="lead">Search viral football videos and fan comments around the FIFA World Cup 2026. SoccerScope helps creators, marketers, analysts, and football fans discover YouTube soccer trends by country and turn them into reports, SNS posts, or shareable web pages.</p>
+  </section>
+
+  <section class="panel">
+    <label class="field-label" for="q" data-i18n="inputLabel">Your request</label>
+    <textarea id="q"></textarea>
+
+    <div class="controls">
+      <div class="seg">
+        <span class="field-label" style="margin:0" data-i18n="formatLabel">Output format</span>
+        <div class="row" id="fmtRow">
+          <button class="fmt active" data-format="report">
+            <span class="ic">📰</span><span class="nm" data-i18n="fmtReportNm">Report</span>
+            <span class="ds" data-i18n="fmtReportDs">国別＋総合コメントの記事</span>
+          </button>
+          <button class="fmt" data-format="sns">
+            <span class="ic">⚡</span><span class="nm" data-i18n="fmtSnsNm">SNS posts</span>
+            <span class="ds" data-i18n="fmtSnsDs">X投稿ドラフト 2〜3本</span>
+          </button>
+          <button class="fmt" data-format="webpage">
+            <span class="ic">🖥️</span><span class="nm" data-i18n="fmtWebNm">Web page</span>
+            <span class="ds" data-i18n="fmtWebDs">共有用のページ表示</span>
+          </button>
+        </div>
+      </div>
+      <button class="go" id="go" data-i18n="go">Generate</button>
+    </div>
+    <div class="hint" data-i18n="hint">⌘/Ctrl + Enter で実行。データは事前解析済みの動画（公式MongoDB MCP経由）から取得します。</div>
+  </section>
+
+  <section class="seo-copy" aria-labelledby="seo-title">
+    <h2 id="seo-title" data-i18n="seoH2">FIFA World Cup 2026 YouTube trends, fan reactions, and viral football videos</h2>
+    <p data-i18n="seoP1">SoccerScope is built for World Cup 2026 research: discover soccer videos going viral across countries, compare which teams and players fans are talking about, and convert YouTube trend data into reports, social posts, or a shareable page.</p>
+    <p data-i18n="seoP2">Use it for football marketing, creator discovery, fan-comment sentiment analysis, and daily World Cup content planning powered by TubeSaku video data.</p>
+    <div class="tag-list" aria-label="SoccerScope keywords">
+      <span>FIFA World Cup 2026</span><span>World Cup 2026</span><span>ワールドカップ2026</span><span>YouTube football trends</span><span>soccer video analysis</span><span>fan reaction sentiment</span><span>サッカー動画分析</span><span>海外サッカー動画</span>
+    </div>
+    <div class="seo-links">
+      <a href="https://webbigdata-jp.github.io/soccerscope/" target="_blank" rel="noopener" data-i18n="seoStatsLink">Open World Cup 2026 video statistics</a>
+      <a href="https://tubesaku.com/" target="_blank" rel="noopener" data-i18n="seoTubeSakuLink">TubeSaku YouTube analysis</a>
+    </div>
+  </section>
+
+  <section class="loading" id="loading">
+    <span class="scoreboard"><span>•</span><span>•</span><span>•</span></span>
+    <span class="lt" data-i18n="loading">世界のバズをスカウト中…（初回はMCP起動で少し時間がかかります）</span>
+  </section>
+
+  <section class="result" id="result">
+    <div class="res-head">
+      <span class="badge" id="resBadge">REPORT</span>
+      <span class="copyall" id="copyAll" data-i18n="copyAll">Markdownをコピー</span>
+    </div>
+    <div id="resBody"></div>
+  </section>
+
+  <div class="err" id="err"></div>
+
+  <footer>
+    <div data-i18n="footL">© 2026 SoccerScope</div>
+    <div class="powered-by"><b>Powered by</b> <a href="https://tubesaku.com/" target="_blank" rel="noopener">TubeSaku</a></div>
+    <div class="site-links">
+      <a href="https://webbigdata-jp.github.io/soccerscope/" target="_blank" rel="noopener" data-i18n="linkStats">World Cup video stats site →</a>
+      <a href="https://tubesaku.com" target="_blank" rel="noopener" data-i18n="linkTubesaku">TubeSaku — YouTube video analysis →</a>
+    </div>
+    <div><b>Built with</b> Google ADK · Gemini · Qwen Embedding (Alibaba Cloud DashScope) · MongoDB Atlas Vector Search · Model Context Protocol</div>
+  </footer>
+
+</div>
+
+<script>
+/* ---------- i18n ---------- */
+const I18N = {
+  ja:{
+    toggleLabel:"日本語 / ", langTarget:"中文",
+    pageTitle:"SoccerScope — FIFAワールドカップ2026 YouTube動画トレンド分析",
+    metaDescText:"SoccerScopeは、ワールドカップ2026で世界各国のYouTubeサッカー動画トレンドとファンコメントを検索し、レポートやSNS投稿を生成するAIエージェントです。",
+    kicker:"FIFAワールドカップ2026・サッカー動画トレンドAI",
+    h1:'FIFAワールドカップ2026の<em>YouTubeサッカー動画</em>を、<br>あなたの<span class="gold">視点</span>でまとめる。',
+    lead:"ワールドカップ2026に向けて世界各国でバズっているサッカー動画、YouTubeトレンド、ファンコメントを横断検索し、レポート・SNS投稿・Webページとして即座に書き出します。",
+    inputLabel:"リクエスト（自由入力）",
+    placeholder:"例：W杯2026に向けて世界でバズっているサッカー動画を集めて、日本のファン視点で総合コメントして",
+    formatLabel:"出力形式",
+    fmtReportNm:"レポート", fmtReportDs:"W杯/国別＋総合コメントの記事",
+    fmtSnsNm:"SNS投稿",   fmtSnsDs:"X投稿ドラフト 2〜3本",
+    fmtWebNm:"Webページ", fmtWebDs:"共有用のページ表示",
+    go:"生成する",
+    hint:"⌘/Ctrl + Enter で実行。データは事前解析済みの動画（公式MongoDB MCP経由）から取得します。",
+    loading:"世界のバズをスカウト中…（初回はMCP起動で少し時間がかかります）",
+    copyAll:"Markdownをコピー", copied:"コピーしました", copyPost:"投稿をコピー",
+    footL:"© 2026 SoccerScope",
+    linkStats:"FIFAワールドカップ2026動画統計サイト →",
+    linkTubesaku:"YouTube動画分析サイト TubeSaku →",
+    errEmpty:"リクエストを入力してください。",
+    errGeneric:"生成に失敗しました：",
+    seoH2:"FIFAワールドカップ2026のYouTubeトレンド、ファン反応、バズ動画を分析",
+    seoP1:"SoccerScopeは、ワールドカップ2026の調査に使えるサッカー動画トレンドAIです。各国でバズっているYouTube動画、代表チームや選手へのファン反応、コメントの感情を横断的に把握できます。",
+    seoP2:"サッカーマーケティング、クリエイター発掘、ファンコメント分析、毎日のW杯コンテンツ企画に活用できます。",
+    seoStatsLink:"ワールドカップ2026動画統計を見る",
+    seoTubeSakuLink:"TubeSakuのYouTube分析を見る",
+    badge:{report:"レポート",sns:"SNS投稿",webpage:"Webページ"}
+  },
+  en:{
+    toggleLabel:"English / ", langTarget:"日本語",
+    pageTitle:"SoccerScope — FIFA World Cup 2026 YouTube Video Trends & Fan Reactions",
+    metaDescText:"SoccerScope is a World Cup 2026 football video trend agent. Search viral YouTube soccer videos across countries, analyze fan comments, and generate reports, SNS posts, and shareable pages.",
+    kicker:"FIFA World Cup 2026 football video trend agent",
+    h1:'FIFA World Cup 2026 <em>YouTube football trends</em><br>from every country, in <span class="gold">your</span> story.',
+    lead:"Search viral football videos and fan comments around the FIFA World Cup 2026. SoccerScope discovers YouTube soccer trends across countries and writes them up as reports, SNS posts, or shareable pages.",
+    inputLabel:"Your request",
+    placeholder:"e.g. Gather the football videos buzzing worldwide ahead of World Cup 2026 and summarize them from a Japanese fan's perspective",
+    formatLabel:"Output format",
+    fmtReportNm:"Report",   fmtReportDs:"World Cup / country synthesis",
+    fmtSnsNm:"SNS posts",   fmtSnsDs:"2–3 ready X post drafts",
+    fmtWebNm:"Web page",    fmtWebDs:"Shareable page view",
+    go:"Generate",
+    hint:"Press ⌘/Ctrl + Enter to run. Data comes from pre-analyzed videos via the official MongoDB MCP.",
+    loading:"Scouting the world's buzz… (the first call spins up MCP, so it may take a moment)",
+    copyAll:"Copy Markdown", copied:"Copied", copyPost:"Copy post",
+    footL:"© 2026 SoccerScope",
+    linkStats:"FIFA World Cup 2026 video stats site →",
+    linkTubesaku:"TubeSaku — YouTube video analysis →",
+    errEmpty:"Please enter a request.",
+    errGeneric:"Generation failed: ",
+    seoH2:"FIFA World Cup 2026 YouTube trends, fan reactions, and viral football videos",
+    seoP1:"SoccerScope is built for World Cup 2026 research: discover soccer videos going viral across countries, compare which teams and players fans are talking about, and convert YouTube trend data into reports, social posts, or a shareable page.",
+    seoP2:"Use it for football marketing, creator discovery, fan-comment sentiment analysis, and daily World Cup content planning powered by TubeSaku video data.",
+    seoStatsLink:"Open World Cup 2026 video statistics",
+    seoTubeSakuLink:"TubeSaku YouTube analysis",
+    badge:{report:"REPORT",sns:"SNS POSTS",webpage:"WEB PAGE"}
+  },
+  zh:{
+    toggleLabel:"中文 / ", langTarget:"EN",
+    pageTitle:"SoccerScope — 2026国际足联世界杯 YouTube视频趋势分析",
+    metaDescText:"SoccerScope是一款2026世界杯足球视频趋势AI，跨国搜索YouTube热门视频与球迷评论，自动生成报告和社交媒体文案。",
+    kicker:"2026国际足联世界杯・足球视频趋势AI",
+    h1:'汇聚2026世界杯的<em>YouTube足球视频</em>，<br>以属于你的<span class="gold">视角</span>呈现。',
+    lead:"搜索2026世界杯前后在各国爆红的足球视频和球迷评论。SoccerScope跨国追踪YouTube足球热点，并自动生成报告、社交媒体文案或可分享的网页。",
+    inputLabel:"输入你的需求",
+    placeholder:"例如：收集2026世界杯前夕在全球爆火的足球视频，并从日本球迷的视角进行综合点评",
+    formatLabel:"输出格式",
+    fmtReportNm:"报告",     fmtReportDs:"世界杯／各国综合报道",
+    fmtSnsNm:"社媒文案",   fmtSnsDs:"2〜3条X（推特）文案草稿",
+    fmtWebNm:"网页",       fmtWebDs:"可分享的页面视图",
+    go:"生成",
+    hint:"按 ⌘/Ctrl + Enter 执行。数据来自预先分析的视频（通过官方MongoDB MCP获取）。",
+    loading:"正在全球搜寻热门话题…（首次调用需启动MCP，可能需要稍等片刻）",
+    copyAll:"复制Markdown", copied:"已复制", copyPost:"复制文案",
+    footL:"© 2026 SoccerScope",
+    linkStats:"2026世界杯视频统计网站 →",
+    linkTubesaku:"YouTube视频分析网站 TubeSaku →",
+    errEmpty:"请输入你的需求。",
+    errGeneric:"生成失败：",
+    seoH2:"2026国际足联世界杯YouTube趋势、球迷反应与爆红足球视频",
+    seoP1:"SoccerScope是专为2026世界杯打造的足球视频趋势AI，助你跨国把握YouTube热门视频、球队与球员的球迷反响、以及评论情绪走向。",
+    seoP2:"适用于足球营销、创作者发掘、球迷评论情绪分析，以及每日世界杯内容策划。",
+    seoStatsLink:"查看2026世界杯视频统计",
+    seoTubeSakuLink:"查看TubeSaku的YouTube分析",
+    badge:{report:"报告",sns:"社媒文案",webpage:"网页"}
+  }
+};
+
+let LANG = "en";
+let FORMAT = "report";
+
+function applyI18n(){
+  const t = I18N[LANG];
+  document.documentElement.lang = LANG;
+  document.title = t.pageTitle;
+  const metaDesc = document.querySelector('meta[name="description"]');
+  if(metaDesc){
+    metaDesc.setAttribute("content", t.metaDescText);
+  }
+  document.querySelectorAll("[data-i18n]").forEach(el=>{
+    const key = el.getAttribute("data-i18n");
+    if(t[key] != null) el.innerHTML = t[key];
+  });
+  document.getElementById("q").placeholder = t.placeholder;
+  document.getElementById("langTarget").textContent = t.langTarget;
+  document.querySelector("#langToggle span[data-i18n='toggleLabel']").textContent = t.toggleLabel;
+}
+
+/* ---------- language toggle (ja → zh → en → ja …) ---------- */
+const LANG_CYCLE = ["ja", "zh", "en"];
+function toggleLang(){
+  const next = LANG_CYCLE[(LANG_CYCLE.indexOf(LANG) + 1) % LANG_CYCLE.length];
+  LANG = next;
+  applyI18n();
+}
+document.getElementById("langToggle").addEventListener("click", toggleLang);
+document.getElementById("langToggle").addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" ") toggleLang(); });
+
+/* ---------- format selector ---------- */
+document.getElementById("fmtRow").addEventListener("click", e=>{
+  const btn = e.target.closest(".fmt");
+  if(!btn) return;
+  FORMAT = btn.dataset.format;
+  document.querySelectorAll(".fmt").forEach(b=>b.classList.toggle("active", b===btn));
+});
+
+/* ---------- markdown render (safe) ---------- */
+function renderMarkdown(md){
+  if(window.marked && window.DOMPurify){
+    return window.DOMPurify.sanitize(window.marked.parse(md));
+  }
+  // フォールバック：ライブラリ未ロード時はプレーン表示
+  const div = document.createElement("div");
+  div.textContent = md;
+  return "<pre style='white-space:pre-wrap'>"+div.innerHTML+"</pre>";
+}
+
+/* ---------- result rendering per format ---------- */
+function showResult(format, content){
+  const body = document.getElementById("resBody");
+  const t = I18N[LANG];
+  document.getElementById("resBadge").textContent = t.badge[format] || format.toUpperCase();
+  body.className = "";
+
+  if(format === "sns"){
+    // 空行で区切ってカード化（番号プレフィックスは見出しとして残す）
+    const parts = content.split(/\n\s*\n/).map(s=>s.trim()).filter(Boolean);
+    const wrap = document.createElement("div");
+    wrap.className = "posts";
+    parts.forEach((p,i)=>{
+      const card = document.createElement("div");
+      card.className = "post";
+      const text = p.replace(/^\s*\d+[\.\)]\s*/,"");
+      card.innerHTML =
+        `<div class="pn">#${i+1}</div>`+
+        `<div class="pc">${renderMarkdown(text)}</div>`+
+        `<button class="cp">${t.copyPost}</button>`;
+      card.querySelector(".cp").addEventListener("click", ()=>copy(text, card.querySelector(".cp")));
+      wrap.appendChild(card);
+    });
+    body.innerHTML = "";
+    body.appendChild(wrap);
+  } else {
+    const doc = document.createElement("div");
+    doc.className = (format === "webpage") ? "doc page" : "doc";
+    doc.innerHTML = renderMarkdown(content);
+    body.innerHTML = "";
+    body.appendChild(doc);
+  }
+
+  // copy-all は raw markdown を渡す
+  const copyAllBtn = document.getElementById("copyAll");
+  copyAllBtn.onclick = ()=>copy(content, copyAllBtn);
+}
+
+/* ---------- clipboard ---------- */
+function copy(text, btn){
+  navigator.clipboard.writeText(text).then(()=>{
+    const old = btn.textContent;
+    btn.textContent = I18N[LANG].copied;
+    setTimeout(()=>{ btn.textContent = old; }, 1400);
+  }).catch(()=>{});
+}
+
+/* ---------- generate ---------- */
+async function generate(){
+  const q = document.getElementById("q").value.trim();
+  const errEl = document.getElementById("err");
+  const resEl = document.getElementById("result");
+  const loadEl = document.getElementById("loading");
+  const goBtn = document.getElementById("go");
+  errEl.className = "err"; resEl.className = "result";
+
+  if(!q){ errEl.textContent = I18N[LANG].errEmpty; errEl.className = "err show"; return; }
+
+  goBtn.disabled = true;
+  loadEl.className = "loading show";
+  try{
+    const r = await fetch("/api/generate", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ query:q, format:FORMAT, lang:LANG })
+    });
+    if(!r.ok){
+      let detail = r.status + " " + r.statusText;
+      try{ const j = await r.json(); if(j.detail) detail = j.detail; }catch(_){}
+      throw new Error(detail);
+    }
+    const data = await r.json();
+    showResult(data.format || FORMAT, data.content || "");
+    resEl.className = "result show";
+    resEl.scrollIntoView({behavior:"smooth", block:"start"});
+  }catch(e){
+    errEl.textContent = I18N[LANG].errGeneric + e.message;
+    errEl.className = "err show";
+  }finally{
+    loadEl.className = "loading";
+    goBtn.disabled = false;
+  }
+}
+document.getElementById("go").addEventListener("click", generate);
+document.getElementById("q").addEventListener("keydown", e=>{
+  if((e.metaKey||e.ctrlKey) && e.key === "Enter") generate();
+});
+
+/* ---------- init ---------- */
+applyI18n();
+</script>
+</body>
+</html>
