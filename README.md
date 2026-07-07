@@ -4,7 +4,7 @@ Demo repository for the [Qwen Cloud Hackathon](https://qwencloud-hackathon.devpo
 
 This is a port of the original GCP(Gemini) + Cloud Run + MongoDB Atlas product,
 [webbigdata-jp/soccerscope](https://github.com/webbigdata-jp/soccerscope),
-to a Qwen(DashScope) + Alibaba Cloud Function Compute 3.0 + MongoDB Atlas stack.
+a multilingual RAG AI agent for World Cup 2026, to a Qwen(DashScope) + Alibaba Cloud Function Compute 3.0 + MongoDB Atlas stack.
 
 Live demo: http://qwen-soccer.tubesaku.com/
 
