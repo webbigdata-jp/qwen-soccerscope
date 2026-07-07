@@ -1,27 +1,28 @@
 """
 SoccerScope — Web backend (FastAPI)
 
-独自Web UI のためのバックエンド。
-  - 既存の ADK エージェント（soccer_agent.agent.root_agent）を ADK Runner で実行する。
-  - フロントから受け取る {query, format, lang} を、エージェント本体を改変せずに
-    「プロンプトへ指示を注入」する形で出力形式（report / sns / webpage）と
-    出力言語（ja / en）に反映する。
-  - 同一オリジンで静的フロント（static/index.html）も配信する。
+Backend for the custom Web UI.
+  - Runs the existing ADK agent (soccer_agent.agent.root_agent) through the ADK Runner.
+  - Reflects {query, format, lang} received from the frontend in the output format
+    (report / sns / webpage) and output language (ja / en) by injecting delivery
+    instructions into the prompt, without modifying the agent itself.
+  - Serves the static frontend (static/index.html) from the same origin.
 
-エージェント(agent.py)は無改変。書き込み系は持たず、読み出しは agent 内の
-search_videos → 公式MongoDB MCP 経由（MCP統合要件を維持）。
+The agent (agent.py) is unchanged. It has no write operations, and reads are
+performed inside the agent through search_videos -> official MongoDB MCP,
+preserving the MCP integration requirement.
 
-ローカル実行:
+Local run:
     uvicorn main:app --host 0.0.0.0 --port 8080
 Cloud Run:
-    Dockerfile 同梱（Python + Node 22）。README.md 参照。
+    Dockerfile included (Python + Node 22). See README.md.
 """
 
 import os
 import uuid
 
-# --- .env を読み込む（agent.py はインポート時に MONGODB_URI を参照するので、
-#     エージェント取り込みより前に読み込む。Cloud Run では .env が無くても無害）---
+# --- Load .env before importing the agent, because agent.py reads MONGODB_URI
+#     at import time. Harmless on Cloud Run even when .env is absent. ---
 try:
     from dotenv import load_dotenv
 
@@ -43,12 +44,13 @@ from google.genai import types
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 
-from soccer_agent.agent import root_agent  # noqa: E402  (.env 読み込み後にimport)
+from soccer_agent.agent import root_agent  # noqa: E402  (import after loading .env)
 
-# --- 【一時デバッグ用】MCP単体起動テスト -------------------------------------
-# FC上でNode.js 20公式公共層をアタッチしただけで npx mongodb-mcp-server が
-# 実際に起動できるかを確認するための、本番機能とは無関係な一時エンドポイント。
-# 確認が終わったら / api/generate 等と一緒にこのブロックごと削除すること。
+# --- Temporary debug endpoint: standalone MCP startup test -------------------
+# Temporary endpoint unrelated to production features, used to verify whether
+# npx mongodb-mcp-server can actually start on FC with only the official
+# Node.js 20 public layer attached.
+# Remove this whole block together with /api/generate-related debug code after verification.
 import shutil
 import time
 import traceback
@@ -60,35 +62,35 @@ from soccer_agent.agent import _mcp_server_params, search_videos  # noqa: E402
 
 APP_NAME = "soccerscope"
 
-# ② レートリミット（IP別、インメモリ）
+# 2) Rate limiting (per IP, in memory)
 limiter = Limiter(key_func=get_remote_address)
 
-# ① クエリ長上限（文字数）
+# 1) Query length limit (characters)
 QUERY_MAX_LEN = 500
 
-# Runner / Session は起動時に一度だけ構築（root_agent は使い回す）
+# Build the Runner / Session only once at startup (reuse root_agent)
 _session_service = InMemorySessionService()
 _runner = Runner(agent=root_agent, app_name=APP_NAME, session_service=_session_service)
 
 
-# --- フロントから来る選択肢を、エージェントへの「指示文」に変換する ----------
-# エージェントの INSTRUCTION 側に既にある記事/SNS/HTML生成フローを、ここから
-# 明示的に呼び分ける。エージェント本体は触らない。
+# --- Convert frontend choices into delivery instructions for the agent --------
+# Explicitly select the article/SNS/HTML generation flow that already exists in
+# the agent INSTRUCTION. Do not modify the agent itself.
 FORMAT_DIRECTIVES = {
-    # レポート: マークダウン記事（国別セクション＋総合コメント）
+    # Report: Markdown article with country sections and an overall synthesis
     "report": (
         "OUTPUT FORMAT = REPORT. Produce a complete Markdown article exactly as "
         "described in your COMPOSING ARTICLES flow: a punchy title and short lead, "
         "one section per country (country name + flag, a 1-2 sentence buzz summary, "
         "the thumbnail as a Markdown image, and a [watch] link), sentiment where "
-        "available, and a closing insightful synthesis (総合コメント). "
+        "available, and a closing insightful synthesis. "
         "MANDATORY: every single video section MUST include both a "
-        "`![title](thumbnail_url)` image line and a `[▶ 動画を見る](url)` link line "
+        "`![title](thumbnail_url)` image line and a `[▶ Watch video](url)` link line "
         "using the real thumbnail_url/url values from the tool results — never omit "
         "them. Run the SELF-CHECK described in your instructions before answering. "
         "Output Markdown only — do NOT wrap it in a code block, do NOT output raw HTML."
     ),
-    # SNS: X投稿ドラフト 2-3本
+    # SNS: 2-3 X post drafts
     "sns": (
         "OUTPUT FORMAT = SNS POSTS. Output 2-3 short, ready-to-post social/X drafts "
         "based on the buzzing videos. Each draft: punchy, 1-2 relevant hashtags, and "
@@ -96,14 +98,14 @@ FORMAT_DIRECTIVES = {
         "with its number (1. / 2. / 3.). Do not add an article or extra commentary "
         "around the drafts — output the posts only."
     ),
-    # Webページ: レポートと同じマークダウン記事を返す（見た目はフロントで“ページ風”に整える）
+    # Web page: return the same Markdown article as a report; the frontend styles it as a page
     "webpage": (
         "OUTPUT FORMAT = WEB FEATURE PAGE. Produce a complete, shareable Markdown "
         "feature article as in your COMPOSING ARTICLES flow (title + lead, one section "
         "per country with flag + thumbnail image + watch link + sentiment, and a strong "
-        "closing 総合コメント). Make it engaging and presentation-ready. "
+        "closing overall synthesis). Make it engaging and presentation-ready. "
         "MANDATORY: every single video section MUST include both a "
-        "`![title](thumbnail_url)` image line and a `[▶ 動画を見る](url)` link line "
+        "`![title](thumbnail_url)` image line and a `[▶ Watch video](url)` link line "
         "using the real thumbnail_url/url values from the tool results — never omit "
         "them. Run the SELF-CHECK described in your instructions before answering. "
         "Output Markdown only — do NOT output raw HTML or a code block."
@@ -139,7 +141,7 @@ def _build_prompt(query: str, fmt: str, lang: str) -> str:
 
 
 async def _run_agent(prompt: str) -> str:
-    """1リクエスト = 1セッションでエージェントを実行し、最終応答テキストを返す。"""
+    """Run the agent with one session per request and return the final response text."""
     user_id = "web"
     session_id = uuid.uuid4().hex
     await _session_service.create_session(
@@ -151,7 +153,7 @@ async def _run_agent(prompt: str) -> str:
     async for event in _runner.run_async(
         user_id=user_id, session_id=session_id, new_message=content
     ):
-        # 最終応答のテキストのみ集約（途中のツール呼び出しイベントは無視）
+        # Aggregate only the final response text and ignore intermediate tool-call events
         if event.is_final_response() and getattr(event, "content", None):
             for part in (event.content.parts or []):
                 if getattr(part, "text", None):
@@ -168,13 +170,13 @@ class GenerateRequest(BaseModel):
 
 app = FastAPI(title="SoccerScope")
 
-# ② slowapi をアプリに接続
+# 2) Attach slowapi to the app
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],     # 本番は提出URLのオリジンに絞ってよい
+    allow_origins=["*"],     # In production, this can be restricted to the submitted URL origin
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -188,13 +190,14 @@ async def healthz():
 @app.get("/debug/mcp-test")
 async def debug_mcp_test(token: str = ""):
     """
-    【一時デバッグ用】mongodb-mcp-server（バンドル済み、node直接実行）が
-    このFC実行環境で実際に起動できるか確認するためのエンドポイント。
-    確認が終わったら削除すること。
+    Temporary debug endpoint to verify whether the bundled mongodb-mcp-server,
+    launched directly with node, can actually start in this FC runtime.
+    Remove this after verification.
 
-    誰でも叩けるとMCPサブプロセスを勝手に起動されてしまう（コールドスタート時間
-    やコストの無駄・内部ツール一覧の露出につながる）ため、環境変数DEBUG_TOKENと
-    一致する ?token=... が無い場合は404を返す（存在自体を隠す）。
+    If anyone could call this endpoint, they could start MCP subprocesses at
+    will, which would waste cold-start time and cost and expose the internal
+    tool list. Therefore, return 404 when ?token=... does not match the
+    DEBUG_TOKEN environment variable, hiding the endpoint itself.
     """
     expected = os.environ.get("DEBUG_TOKEN", "")
     if not expected or token != expected:
@@ -209,13 +212,14 @@ async def debug_mcp_test(token: str = ""):
         return {
             "ok": False,
             "log": log,
-            "hint": "nodeが見つかりません。Node.js 20公式公共層がアタッチ"
-            "されているか、層のバージョン/互換ランタイムを確認してください。",
+            "hint": "node was not found. Check whether the official Node.js 20 public "
+            "layer is attached and whether the layer version/runtime is compatible.",
         }
 
-    # --- 【v4】バンドル済みnode_modules/mongodb-mcp-serverの存在チェック -------
-    # npxを廃止し、ビルド時にcode.zipへバンドルしたものをnode直接実行する方式に
-    # 変更したため、まず「そもそもzipにnode_modulesが入っているか」を確認する。
+    # --- v4: Check whether the bundled node_modules/mongodb-mcp-server exists ----
+    # Since npx was removed and the server bundled into code.zip at build time is
+    # now run directly with node, first check whether node_modules was included
+    # in the zip at all.
     from soccer_agent.agent import _MONGODB_MCP_ENTRY  # noqa: E402
 
     log.append(f"mongodb-mcp-server entry -> {_MONGODB_MCP_ENTRY}")
@@ -223,15 +227,16 @@ async def debug_mcp_test(token: str = ""):
         return {
             "ok": False,
             "log": log,
-            "hint": "バンドルされているはずのmongodb-mcp-serverが見つかりません。"
-            "ビルド時に `npm install --prefix build mongodb-mcp-server` を"
-            "実行し、code.zipにnode_modules/を含めたか確認してください。",
+            "hint": "The bundled mongodb-mcp-server was not found. "
+            "Check that `npm install --prefix build mongodb-mcp-server` was "
+            "run at build time and that node_modules/ was included in code.zip.",
         }
 
-    # --- 事前チェック: node <entry> --dryRun を素のサブプロセスとして直接実行し、
-    # 起動時の設定・有効ツール一覧を、mcp SDKのanyio TaskGroupに包まれる前の
-    # 生の標準出力で確認する。npxを介さないため、ここは数秒で完了するはず
-    # （もし依然として遅い/固まるなら、npmではなくMongoDB接続自体を疑う）。
+    # --- Pre-check: run node <entry> --dryRun directly as a raw subprocess and
+    # inspect startup settings and enabled tools from raw stdout before they are
+    # wrapped by the mcp SDK anyio TaskGroup. Since npx is no longer involved,
+    # this should complete within a few seconds. If it is still slow or hangs,
+    # suspect the MongoDB connection itself rather than npm.
     t_pre = time.monotonic()
     try:
         proc = await asyncio.create_subprocess_exec(
@@ -266,16 +271,16 @@ async def debug_mcp_test(token: str = ""):
             await proc.wait()
             pre_elapsed = time.monotonic() - t_pre
             log.append(
-                f"[pre-check] TIMEOUT after {pre_elapsed:.1f}s — npxを廃止した"
-                "後もここが詰まるなら、MongoDB Atlasへの接続自体（ネットワーク/"
-                "IP allowlist/VPC設定）を疑う"
+                f"[pre-check] TIMEOUT after {pre_elapsed:.1f}s — if this still hangs "
+                "after removing npx, suspect the MongoDB Atlas connection itself "
+                "(network/IP allowlist/VPC settings)"
             )
     except Exception as e:  # noqa: BLE001
-        log.append(f"[pre-check] サブプロセス起動自体に失敗: {type(e).__name__}: {e}")
+        log.append(f"[pre-check] failed to start the subprocess itself: {type(e).__name__}: {e}")
 
-    # --- 本チェック: mcp SDK経由でMCPセッションを確立してlist_tools() -----------
+    # --- Main check: establish an MCP session through the mcp SDK and call list_tools() ---
     def _flatten_exceptions(exc: BaseException):
-        """ExceptionGroup/TaskGroupの中身を再帰的に展開して本当の例外を取り出す。"""
+        """Recursively flatten ExceptionGroup/TaskGroup contents to extract the real exceptions."""
         subs = getattr(exc, "exceptions", None)
         if subs:
             for s in subs:
@@ -284,11 +289,11 @@ async def debug_mcp_test(token: str = ""):
             yield exc
 
     async def _run_mcp_check() -> list[str]:
-        # 【バグ修正】以前はここで`return tool_names`していたが、returnが
-        # `async with`ブロックの中にあると、値を確定させた後の後片付け(__aexit__)
-        # で例外が起きた場合、その後片付け中の例外がreturnを上書きして呼び出し元に
-        # 伝播してしまう(Pythonの仕様)。取得済みの結果を outer 変数に退避し、
-        # 後片付け専用の例外はここで飲み込むようにする。
+        # Bug fix: this used to `return tool_names` here, but when return is inside
+        # an `async with` block and an exception occurs during cleanup (__aexit__)
+        # after the value has been finalized, Python lets that cleanup exception
+        # override the return value and propagate to the caller. Store the fetched
+        # result in an outer variable, then swallow cleanup-only exceptions here.
         got: dict[str, list[str] | None] = {"tools": None}
         try:
             async with stdio_client(_mcp_server_params()) as (read, write):
@@ -307,13 +312,13 @@ async def debug_mcp_test(token: str = ""):
                     }
                     missing = expected_tools - set(tool_names)
                     if missing:
-                        log.append(f"注意: 見つからないツール名: {sorted(missing)}")
+                        log.append(f"warning: missing tool names: {sorted(missing)}")
         except Exception as e:  # noqa: BLE001
             if got["tools"] is not None:
-                # 欲しいデータはもう取れているので、切断時の後片付けエラーは無視する。
+                # The data we need has already been fetched, so ignore cleanup errors during disconnect.
                 log.append(
-                    f"(注意: セッション終了時の後片付けで例外が発生しましたが、"
-                    f"ツール一覧の取得自体は成功済みのため無視します: "
+                    f"(warning: an exception occurred during session cleanup, but "
+                    f"tool-list retrieval itself already succeeded, so it is ignored: "
                     f"{type(e).__name__}: {e})"
                 )
                 return got["tools"]
@@ -322,15 +327,15 @@ async def debug_mcp_test(token: str = ""):
 
     t0 = time.monotonic()
     try:
-        # ここに明示的な上限を付けないと、ハングした場合にFCのタイムアウトで
-        # 強制killされ、ログが一切返らない（今回発生した事象）。
+        # Without an explicit limit here, a hang would be force-killed by the FC timeout
+        # and no logs would be returned, which is the issue observed here.
         tool_names = await asyncio.wait_for(_run_mcp_check(), timeout=30)
         return {"ok": True, "tools": tool_names, "log": log}
     except asyncio.TimeoutError:
         elapsed = time.monotonic() - t0
         log.append(
-            f"TIMEOUT after {elapsed:.1f}s — MCPセッションの確立自体がハングして"
-            "いる可能性が高い（npm経由の取得が止まっている等）"
+            f"TIMEOUT after {elapsed:.1f}s — MCP session establishment itself is likely "
+            "hanging, for example because package retrieval through npm is stuck"
         )
         return {"ok": False, "log": log}
     except Exception as e:  # noqa: BLE001
@@ -346,15 +351,15 @@ async def debug_mcp_test(token: str = ""):
 @app.get("/debug/search-test")
 async def debug_search_test(token: str = "", q: str = "buzzing football video", country: str = ""):
     """
-    【一時デバッグ用】search_videos()をエージェント（Qwen）を経由せず直接呼び出し、
-    MongoDB Atlasに実際に保存されているドキュメントに url / thumbnail_url が
-    含まれているかを生データで確認するためのエンドポイント。
-    確認が終わったら削除すること。
+    Temporary debug endpoint that calls search_videos() directly, without going
+    through the Qwen agent, to inspect raw data and verify whether documents
+    stored in MongoDB Atlas actually contain url / thumbnail_url.
+    Remove this after verification.
 
-    背景: レポート出力に動画への[watch]リンクやサムネイル画像が含まれない問題が
-    報告された。原因が (a) データ側にそもそもurl/thumbnail_urlが無い/空、
-    (b) データはあるがQwenが指示に従わず出力に含めていない、のどちらかを
-    切り分けるために、LLMを介さずデータ層だけを直接見る。
+    Background: reports were missing [watch] links or thumbnail images. This
+    checks only the data layer, without involving the LLM, to distinguish between
+    (a) missing or empty url/thumbnail_url in the data itself and (b) data exists
+    but Qwen does not follow the instruction to include it in the output.
     """
     expected = os.environ.get("DEBUG_TOKEN", "")
     if not expected or token != expected:
@@ -391,9 +396,10 @@ async def debug_search_test(token: str = "", q: str = "buzzing football video", 
         "n_missing_url": n_missing_url,
         "n_missing_thumbnail_url": n_missing_thumb,
         "hint": (
-            "url/thumbnail_urlが空のドキュメントがある場合はデータ層(埋め込み"
-            "パイプライン)の問題。全部埋まっているのにレポートにリンクが無いなら"
-            "Qwen側の指示追従の問題（プロンプト強化で対応）。"
+            "If any document has an empty url/thumbnail_url, the issue is in the data "
+            "layer (embedding pipeline). If all values are present but the report "
+            "has no links, the issue is Qwen instruction following; address it by "
+            "strengthening the prompt."
             if (n_missing_url or n_missing_thumb) or videos
             else None
         ),
@@ -402,9 +408,9 @@ async def debug_search_test(token: str = "", q: str = "buzzing football video", 
 
 
 @app.post("/api/generate")
-@limiter.limit("3/minute")          # ② IP別 1分間に3リクエストまで
+@limiter.limit("3/minute")          # 2) Up to 3 requests per minute per IP
 async def generate(req: GenerateRequest, request: Request):
-    # ① クエリ長チェック
+    # 1) Query length check
     if len(req.query) > QUERY_MAX_LEN:
         raise HTTPException(
             status_code=400,
@@ -429,17 +435,17 @@ async def generate(req: GenerateRequest, request: Request):
     return {"format": req.format, "lang": req.lang, "content": content}
 
 
-# 静的フロント（最後にマウント：上の API ルートが優先される）
+# Static frontend. Mount last so the API routes above take precedence.
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 
 if __name__ == "__main__":
     import uvicorn
 
-    # timeout_keep_alive: Function Compute 3.0 のカスタムコンテナ要件で
-    # 「keep-aliveを有効にし、リクエストタイムアウトを15分(900秒)以上にする」
-    # とあるため明示的に設定。デフォルト(5秒)のままだとFC経由のリクエストが
-    # 途中で切断される可能性がある。
+    # timeout_keep_alive: Function Compute 3.0 custom container requirements say
+    # to enable keep-alive and set the request timeout to at least 15 minutes
+    # (900 seconds), so set it explicitly. With the default 5 seconds, requests
+    # through FC may be disconnected midway.
     uvicorn.run(
         app,
         host="0.0.0.0",

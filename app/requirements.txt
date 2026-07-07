@@ -1,49 +1,60 @@
-# --- Agent (既存 agent.py が必要とするもの) ---
+# --- Agent dependencies required by the existing agent.py ---
 google-adk>=2.1.0
-google-genai>=1.75.0   # main.pyがtypesを直接使用
+google-genai>=1.75.0   # main.py uses types directly
 
-# --- LLM本体 (Qwen / DashScope, LiteLLM経由) ---
-# ADKにmodel=文字列を渡すとGeminiとして解釈されるため、Qwen等の非Geminiモデルは
-# google.adk.models.lite_llm.LiteLlm でラップする必要がある。litellmはgoogle-adkに
-# 同梱されない別パッケージなので明示的に追加。
-# 注意: litellm 1.82.7 / 1.82.8 (2026-03-24 PyPI公開分) はサプライチェーン攻撃で
-# 不正コードが混入した既知のインシデントあり(1.83.0で修正済み)。念のため新しめの
-# バージョンに固定する。
+# --- Core LLM (Qwen / DashScope via LiteLLM) ---
+# When a model string is passed to ADK, it is interpreted as a Gemini model.
+# Therefore, non-Gemini models such as Qwen must be wrapped with
+# google.adk.models.lite_llm.LiteLlm. litellm is not bundled with google-adk,
+# so it is added explicitly.
+# Note: litellm 1.82.7 / 1.82.8 (released on PyPI on 2026-03-24) had a known
+# supply-chain incident that introduced malicious code, fixed in 1.83.0.
+# Pin to a newer version as an extra precaution.
 litellm>=1.90.0
 
-# mcp パッケージ（MongoDB公式MCP "mongodb-mcp-server" をnode直接実行で呼ぶために
-# 必要。バンドルしたJS本体を起動するプロセス管理・stdio通信に使う。npxはv4で廃止）。
-# 現行の安定版はv1.x系（最新1.28.1）で、v2は2026-07-28に安定版予定のプレリリース
-# 中（2.0.0aN/bN）。pip/uvはデフォルトでプレリリースを選ばないが、念のため<2の
-# 上限を付けて事故を防ぐ。
+# mcp package. This is required to launch the official MongoDB MCP
+# "mongodb-mcp-server" by running node directly. It handles process management
+# and stdio communication for the bundled JS server. npx was removed in v4.
+# The current stable line is v1.x (latest 1.28.1). v2 is still in prerelease,
+# with the stable release scheduled for 2026-07-28 (2.0.0aN/bN at the time of
+# writing). pip/uv does not select prereleases by default, but add <2 anyway
+# to avoid accidental upgrades.
 mcp>=1.27,<2
-# --- Embedding (Qwen / DashScope OpenAI互換API) ---
-# agent.py / 1_embed_videos.py の embed 呼び出しが openai SDK経由のQwenに
-# 置き換わったため追加。
+# --- Embedding (Qwen / DashScope OpenAI-compatible API) ---
+# Added because embed calls in agent.py / 1_embed_videos.py were replaced with
+# Qwen calls through the OpenAI SDK.
 openai>=1.50.0
 # --- Web backend ---
 fastapi>=0.115.0
 uvicorn[standard]>=0.30.0
 python-dotenv>=1.0.0
-# pymongo Async API（AsyncMongoClient）を使用。4.9で導入、4.13で安定化。
-# search_videos（$vectorSearchによる意味検索）のみこの依存で直結。
-# find/count/list-collections/collection-schemaは公式MongoDB MCP経由
-# （node直接実行、npxは不使用。下記の【JS側の依存】参照）。
+# Uses the pymongo Async API (AsyncMongoClient). Introduced in 4.9 and stabilized
+# in 4.13. Only search_videos, which performs semantic search through
+# $vectorSearch, connects directly through this dependency. find/count/
+# list-collections/collection-schema go through the official MongoDB MCP server
+# (run directly through node; npx is not used. See the JS dependency section
+# below).
 pymongo[srv]>=4.13.0
-# API利用制限
+# API rate limiting
 slowapi>=0.1.9
 
 # =============================================================================
-# 【JS側の依存・ビルド手順】mongodb-mcp-server（npm）
+# JS dependency and build steps: mongodb-mcp-server (npm)
 # =============================================================================
-# pipとは別に、ビルド時に以下をbuild/へ実行してnode_modules/をcode.zipに含める。
-# 実行にはFC側にNode.js 20公式公共層（nodeコマンド）が必要（npx/npmは不要）。
+# Separately from pip, run the following at build time so node_modules/ is
+# included in code.zip under build/.
+# The FC side must have the official Node.js 20 public layer available for the
+# node command. npx/npm is not required at runtime.
 #
 #   npm install --prefix build mongodb-mcp-server
-#   rm -rf build/node_modules/@oven   # Bunランタイム用ネイティブバイナリ
-#                                      # (4種×約85〜89MB=346MB)。mongodb-mcp-server
-#                                      # 自体は使わないため除去（--help/--dryRunとも
-#                                      # 削除後の動作を確認済み）。除去後は約135MB。
+#   rm -rf build/node_modules/@oven   # Native binaries for the Bun runtime
+#                                      # (4 variants x about 85-89 MB = 346 MB).
+#                                      # mongodb-mcp-server itself does not use
+#                                      # them, so remove them. Behavior after
+#                                      # removal has been confirmed with both
+#                                      # --help and --dryRun. Size after removal
+#                                      # is about 135 MB.
 #
-# 全体サイズ目安: Python依存(~40.5MB) + node_modules(~135MB) ≈ 176MB
-# （FCのデプロイパッケージ上限500MBに対して十分余裕あり）
+# Approximate total size: Python dependencies (~40.5 MB) + node_modules (~135 MB)
+# = about 176 MB, leaving plenty of room under FC's 500 MB deployment package
+# limit.

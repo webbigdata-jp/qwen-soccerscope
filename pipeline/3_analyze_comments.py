@@ -1,57 +1,58 @@
 #!/usr/bin/env python3
 """
-Phase5 ステージ1: コメント感情分析 + サッカー関連性判定 → ローカル保存
-【Qwen Cloud移植版】
+Phase5 Stage 1: Comment sentiment analysis + soccer relevance judgment -> local save
+[Qwen Cloud migration version]
 
-../../soccer/data/<date>/phase4_comments_*.json の各動画について、タイトル・
-説明文・コメント群を Qwen(DashScope, OpenAI互換API) で分析し、
-サッカー関連性(is_soccer_related)・感情比率・ポジ/ネガのテーマ(ja/en)・
-引用候補(ja/en訳付き) を生成して ./data/<date>/comment_analysis_<timestamp>.json
-に保存する。
+For each video in ../../soccer/data/<date>/phase4_comments_*.json, analyze the
+title, description, and comments with Qwen (DashScope, OpenAI-compatible API),
+generate soccer relevance (is_soccer_related), sentiment ratios, positive/negative
+themes (ja/en), and quotable comments (with ja/en translations), then save them to
+./data/<date>/comment_analysis_<timestamp>.json.
 
-【Gemini版との差分（重要）】
-  DashScopeのOpenAI互換APIには、Geminiの response_schema=PydanticModel の
-  ような「スキーマ強制」機能が無い。サポートされるのは
-  response_format={"type": "json_object"} という、構文的に正しいJSONで
-  あることだけを保証する「JSONモード」のみ（フィールド名・型・ネスト構造は
-  保証されない）。そのため、以下の2段構えにしている:
-    1. プロンプト(system_instruction)にスキーマをテキストで明示的に書き下す
-       （Alibaba公式ドキュメント推奨のパターン）
-    2. 返ってきたJSONを自前でこちらのPydanticモデルにバリデーションし、
-       不一致ならリトライする（Gemini版には無かった処理）
-  また、DashScopeはプロンプトに"json"という単語が含まれていないと
-  response_format指定時に400エラーになる制約があるため、system_instruction
-  に明示的に含めている。thinkingモードとjson_objectモードは併用不可のため、
-  thinking関連のパラメータは一切指定しない（Gemini版のthinking_configは削除）。
-  max_tokens系のハードキャップも、Alibaba公式が「構造化出力使用時は設定するな
-  （途中で切れてJSON破損のリスク）」と明記しているため設定しない。
+[Important differences from the Gemini version]
+  DashScope's OpenAI-compatible API does not have a "schema enforcement" feature
+  like Gemini's response_schema=PydanticModel. It only supports JSON mode via
+  response_format={"type": "json_object"}, which guarantees only syntactically
+  valid JSON (field names, types, and nested structure are not guaranteed). This
+  script therefore uses the following two-layer approach:
+    1. Explicitly write out the schema in text in the prompt (system_instruction)
+       (the pattern recommended by Alibaba's official documentation).
+    2. Validate the returned JSON with our own Pydantic model and retry if it does
+       not match (a process that the Gemini version did not need).
+  Also, DashScope returns a 400 error when response_format is specified unless the
+  prompt contains the word "json", so it is included explicitly in system_instruction.
+  Thinking mode and json_object mode cannot be used together, so no thinking-related
+  parameters are specified (Gemini's thinking_config was removed). Hard caps such as
+  max_tokens are also not set because Alibaba's official documentation says not to
+  set them when using structured output (to avoid truncation that can break JSON).
 
-【日付ベースのI/O】
-  入力: ../../soccer/data/<date>/phase4_comments_*.json （Geminiフロー側、読むだけ）
-  出力: ./data/<date>/comment_analysis_<timestamp>.json
-  <date> は省略時は今日(YYYYMMDD)。バックフィル時は引数で指定
-  （例: python 3_analyze_comments.py 20260704）。
+[Date-based I/O]
+  Input: ../../soccer/data/<date>/phase4_comments_*.json (Gemini flow side, read-only)
+  Output: ./data/<date>/comment_analysis_<timestamp>.json
+  If <date> is omitted, today's date (YYYYMMDD) is used. For backfills, pass it as an argument
+  (example: python 3_analyze_comments.py 20260704).
 
-【耐障害性・速度に関する追加対応】
-  1. タイムアウト明示 + タイムアウトも429と同じ指数バックオフでリトライ
-     （openai公式SDKはtimeout未指定だとデフォルト600秒・自動リトライ込みで
-     1件が最悪30分近く固まり得るため、明示的に短くしている）。
-  2. 途中経過を ./data/<date>/_analyze_checkpoint.json に逐次保存し、
-     中断後の再実行時は処理済みvideo_idをスキップして再開する。
-  3. ThreadPoolExecutorによる並列実行（デフォルト同時実行数5、
-     環境変数QWEN_MAX_WORKERSで調整可）。逐次実行+固定sleepをやめ、
-     並列数の上限自体をレート制御として使う。
+[Additional reliability and speed handling]
+  1. Explicit timeout + retry timeouts with the same exponential backoff as 429s
+     (the official openai SDK defaults to 600 seconds when timeout is unspecified,
+     and with automatic retries one item can hang for nearly 30 minutes in the worst case;
+     therefore, this is set shorter explicitly).
+  2. Save progress incrementally to ./data/<date>/_analyze_checkpoint.json, and on
+     rerun after interruption, skip already processed video_id values and resume.
+  3. Parallel execution with ThreadPoolExecutor (default concurrency 5, adjustable
+     with environment variable QWEN_MAX_WORKERS). Instead of sequential execution +
+     fixed sleeps, the concurrency limit itself is used as rate control.
 
-【2段構成の前半】DashScope APIを叩くのはこのスクリプトだけ。
-MongoDB投入(ステージ2)をやり直してもAPIを再消費しない。
+[First half of the two-stage flow] This is the only script that calls the DashScope API.
+Re-running the MongoDB load step (stage 2) will not consume API usage again.
 
-事前準備:
+Prerequisites:
     pip install openai pydantic python-dotenv
     export DASHSCOPE_API_KEY='...'
 
-実行:
+Run:
     python 3_analyze_comments.py [YYYYMMDD]
-    （省略時は今日の日付で ../../soccer/data/<今日>/ を読みに行く）
+    (when omitted, it reads ../../soccer/data/<today>/ using today's date)
 """
 
 import os
@@ -69,31 +70,33 @@ from pydantic import BaseModel, ValidationError
 from openai import OpenAI
 
 MODEL = os.environ.get("QWEN_CHAT_MODEL", "qwen-plus")
-FIX_MODEL = os.environ.get("QWEN_FIX_MODEL", "qwen-flash")  # JSON構文修復専用（Alibaba公式推奨パターン）
+FIX_MODEL = os.environ.get("QWEN_FIX_MODEL", "qwen-flash")  # Dedicated to JSON syntax repair (Alibaba's recommended pattern).
 DASHSCOPE_BASE_URL = os.environ.get(
     "DASHSCOPE_BASE_URL", "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
 )
 TIMEOUT_SECONDS = float(os.environ.get("QWEN_TIMEOUT_SECONDS", "60"))
-# openai公式SDKはデフォルト600秒・自動リトライ込みで1件が最悪30分近く固まり得るため、
-# 明示的に短くする。60秒あれば通常のqwen-plus応答には十分すぎるくらい余裕がある。
+# The official openai SDK defaults to 600 seconds when timeout is unspecified, and with
+# automatic retries one item can hang for nearly 30 minutes in the worst case, so set it
+# shorter explicitly. 60 seconds is more than enough for normal qwen-plus responses.
 
 MAX_WORKERS = int(os.environ.get("QWEN_MAX_WORKERS", "5"))
-# 並列実行数。DashScopeの一般的なレート上限(有償枠でqwen-plusはRPM 600程度が目安)を
-# 踏まえた安全側の初期値。429が頻発するようなら下げる、余裕があれば上げる。
+# Parallel worker count. The initial value is conservative based on typical DashScope
+# rate limits (roughly RPM 600 for qwen-plus on paid quotas). Lower it if 429s are
+# frequent, or raise it if there is headroom.
 
-MAX_COMMENTS = 100                    # 1動画あたりQwenに渡す上限（いいね順）
-MAX_QUOTES = 3                        # 引用候補の最大数
-MAX_TEAMS = 8                         # 言及チームの最大数
-TEMPERATURE = 0.3                     # 分析タスクなので低めで安定寄り
+MAX_COMMENTS = 100                    # Maximum comments to send to Qwen per video (sorted by likes).
+MAX_QUOTES = 3                        # Maximum number of quotable comments.
+MAX_TEAMS = 8                         # Maximum number of mentioned teams.
+TEMPERATURE = 0.3                     # Low and stable for an analysis task.
 
-MAX_RATE_LIMIT_RETRIES = 4            # 429/タイムアウト時の指数バックオフ回数
-MAX_SCHEMA_RETRIES = 2                # こちらのPydanticモデルと不一致だった場合の再生成回数
-                                       # （429リトライとは別カウンタ。無限リトライでの課金膨張を防ぐ）
+MAX_RATE_LIMIT_RETRIES = 4            # Number of exponential-backoff retries for 429/timeouts.
+MAX_SCHEMA_RETRIES = 2                # Number of regenerations when the result does not match our Pydantic model.
+                                       # Separate from 429 retries to avoid unlimited retries and growing API costs.
 
 CHECKPOINT_FILENAME = "_analyze_checkpoint.json"
-# 先頭に"_"を付け、comment_analysis_*.json / phase4_comments_*.json 等の
-# globパターンと衝突しない名前にしている（4_load_comment_analysis.py側の
-# 「最新のcomment_analysis_*.jsonを選ぶ」ロジックに影響を与えないため）。
+# Prefix with "_" so the name does not collide with glob patterns such as
+# comment_analysis_*.json / phase4_comments_*.json, and so it does not affect the
+# "select the latest comment_analysis_*.json" logic in 4_load_comment_analysis.py.
 
 SCRIPT_DIR = Path(__file__).parent
 
@@ -101,9 +104,9 @@ from dotenv import load_dotenv
 load_dotenv(SCRIPT_DIR / '.env')
 
 
-# ---- 構造化出力スキーマ（引き継ぎ書の comment_analysis に準拠。Gemini版と同一）----
+# ---- Structured output schema (follows comment_analysis in the handoff document; same as the Gemini version) ----
 class Sentiment(BaseModel):
-    positive: float   # 比率(%)。3つの合計が約100になる想定
+    positive: float   # Ratio (%). The three values are expected to total roughly 100.
     negative: float
     neutral: float
 
@@ -124,9 +127,9 @@ class QuotableComment(BaseModel):
 
 
 class TeamMention(BaseModel):
-    team: str          # 集計のため英語の代表チーム名で正規化（例: "Argentina", "Japan"）
-    sentiment: str     # そのチームへの全体論調: "positive" / "neutral" / "negative"
-    mention_count: int  # 言及したと思われるコメント数の概算
+    team: str          # Normalized to an English national team name for aggregation (examples: "Argentina", "Japan").
+    sentiment: str     # Overall tone toward that team: "positive" / "neutral" / "negative".
+    mention_count: int  # Approximate number of comments that appear to mention the team.
 
 
 class CommentAnalysis(BaseModel):
@@ -139,40 +142,40 @@ class CommentAnalysis(BaseModel):
     mentioned_teams: list[TeamMention]
 
 
-# DashScopeは response_format 指定時、プロンプト中に"json"という単語(大小文字問わず)が
-# 含まれていないと400エラーになる制約がある。そのため明示的に含めている。
+# When response_format is specified, DashScope returns a 400 error unless the prompt contains
+# the word "json" (case-insensitive). Include it explicitly here.
 SYSTEM_INSTRUCTION = (
-    "あなたはサッカー(FIFAワールドカップ)関連のYouTube動画コメントを分析する専門家です。"
-    "与えられた多言語のコメント群を分析し、視聴者の感情・話題・引用に値する声を構造化して返します。"
+    "You are an expert analyst of YouTube video comments related to soccer (including the FIFA World Cup). "
+    "Analyze the provided multilingual comments and return structured information about viewer sentiment, topics, and quotable voices."
     "\n\n"
-    "必ず有効なJSON形式のみで応答してください。前置き・説明文・マークダウンのコードブロック"
-    "(```json ... ```などの記法)は一切付けず、JSONオブジェクト単体を出力してください。"
-    "出力するJSONオブジェクトは、以下の構造・型に厳密に従ってください:\n"
+    "Respond only with valid JSON. Do not add a preface, explanatory text, or Markdown code blocks "
+    "such as ```json ... ```. Output a single JSON object only. "
+    "The JSON object you output must strictly follow this structure and these types:\n"
     "{\n"
-    '  "is_soccer_related": true または false (真偽値),\n'
-    '  "relevance_reason": "判定理由(日本語1文程度、文字列)",\n'
-    '  "sentiment": {"positive": 数値(%), "negative": 数値(%), "neutral": 数値(%)},\n'
-    '  "positive_themes": [{"theme_ja": "文字列", "theme_en": "文字列", '
-    '"mention_count": 整数}, ...],\n'
-    '  "negative_themes": [{"theme_ja": "文字列", "theme_en": "文字列", '
-    '"mention_count": 整数}, ...],\n'
-    '  "quotable_comments": [{"original": "文字列", "translated_ja": "文字列", '
-    '"translated_en": "文字列", "author": "文字列", "likes": 整数, '
-    '"original_language": "言語コード文字列"}, ...],\n'
-    '  "mentioned_teams": [{"team": "英語の代表チーム名", '
-    '"sentiment": "positive"か"neutral"か"negative"のいずれか, '
-    '"mention_count": 整数}, ...]\n'
+    '  "is_soccer_related": true or false (boolean),\n'
+    '  "relevance_reason": "reason for the judgment (about one sentence in Japanese, string)",\n'
+    '  "sentiment": {"positive": number (%), "negative": number (%), "neutral": number (%)},\n'
+    '  "positive_themes": [{"theme_ja": "string", "theme_en": "string", '
+    '"mention_count": integer}, ...],\n'
+    '  "negative_themes": [{"theme_ja": "string", "theme_en": "string", '
+    '"mention_count": integer}, ...],\n'
+    '  "quotable_comments": [{"original": "string", "translated_ja": "string", '
+    '"translated_en": "string", "author": "string", "likes": integer, '
+    '"original_language": "language-code string"}, ...],\n'
+    '  "mentioned_teams": [{"team": "English national team name", '
+    '"sentiment": one of "positive", "neutral", or "negative", '
+    '"mention_count": integer}, ...]\n'
     "}\n"
-    "全てのフィールドは省略せず必ず含めてください（該当が無い場合は空配列 [] '"
-    "を使い、フィールド自体を欠落させないでください）。"
+    "Include every field without omission. If nothing applies, use an empty array [] and do not drop the field."
 )
 
 
 def make_client() -> OpenAI:
-    """DashScope用OpenAIクライアントを生成する。timeoutを明示指定（デフォルト60秒）。
+    """Create an OpenAI client for DashScope with an explicit timeout (default 60 seconds).
 
-    openai公式SDKはtimeout未指定だとデフォルト600秒・自動リトライ込みで
-    1件が最悪30分近く固まり得るため、明示的に短くしている。
+    The official openai SDK defaults to 600 seconds when timeout is unspecified, and with
+    automatic retries one item can hang for nearly 30 minutes in the worst case, so set it
+    shorter explicitly.
     """
     return OpenAI(
         api_key=os.environ.get("DASHSCOPE_API_KEY"),
@@ -184,22 +187,22 @@ def make_client() -> OpenAI:
 def find_phase4_path(date_dir: Path) -> str:
     hits = sorted(glob.glob(str(date_dir / "phase4_comments_*.json")))
     if not hits:
-        print(f"ERROR: {date_dir}/phase4_comments_*.json が見つかりません。", file=sys.stderr)
-        print("日付指定が正しいか、Geminiフロー側(phase2→phase3→phase7→phase4)が"
-              "その日付で実行済みか確認してください。", file=sys.stderr)
+        print(f"ERROR: {date_dir}/phase4_comments_*.json was not found.", file=sys.stderr)
+        print("Check that the date argument is correct and that the Gemini flow "
+              "(phase2 -> phase3 -> phase7 -> phase4) has already run for that date.", file=sys.stderr)
         sys.exit(1)
     return hits[-1]
 
 
 def build_prompt(meta: dict, comments: list) -> str:
-    """動画メタ + コメント一覧から分析プロンプトを組む。（Gemini版と同一ロジック）
+    """Build the analysis prompt from video metadata + a comment list (same logic as Gemini version).
 
-    meta['countries'] は (b) 多対多方式で、動画が出現した全国のリスト。
-    1動画が複数国の検索結果に出現し得るため、国名・言語は複数列挙する。
+    meta['countries'] uses the many-to-many approach (b), listing all countries where the video appeared.
+    Because one video can appear in search results for multiple countries, list multiple countries and languages.
 
-    is_soccer_related の判定はタイトル・説明文を主な根拠とする（コメントが
-    0件/取得失敗の動画でも判定できるようにするため）。コメントがあれば
-    判定の補助材料として使ってよい。
+    The is_soccer_related judgment should mainly be based on title and description so that videos with
+    zero comments or failed comment retrieval can still be judged. Comments may be used as supporting evidence
+    if available.
     """
     lines = []
     for c in comments:
@@ -207,61 +210,60 @@ def build_prompt(meta: dict, comments: list) -> str:
         likes = c.get("like_count", 0)
         text = (c.get("text_original") or "").replace("\n", " ").strip()
         lines.append(f"[likes={likes}] {author}: {text}")
-    comments_block = "\n".join(lines) if lines else "(コメントなし、または取得不可)"
+    comments_block = "\n".join(lines) if lines else "(No comments, or comments could not be retrieved)"
 
     countries = meta.get("countries", []) or []
     country_names_ja = [c.get("country_name_ja", "") for c in countries if c.get("country_name_ja")]
     primary_langs = sorted({c.get("primary_lang", "") for c in countries if c.get("primary_lang")})
-    countries_str = "、".join(country_names_ja) if country_names_ja else "不明"
-    langs_str = "、".join(primary_langs) if primary_langs else "不明"
+    countries_str = ", ".join(country_names_ja) if country_names_ja else "Unknown"
+    langs_str = ", ".join(primary_langs) if primary_langs else "Unknown"
 
     description = (meta.get("description") or "").strip()
-    description_block = description[:500] if description else "(説明文なし)"
+    description_block = description[:500] if description else "(No description)"
 
     return (
-        f"# 動画情報\n"
-        f"出現国(この動画が話題になっている国、複数の場合あり): {countries_str}\n"
-        f"主要言語(出現国の言語、複数の場合あり): {langs_str}\n"
-        f"タイトル: {meta.get('title')}\n"
-        f"説明文(先頭500字): {description_block}\n\n"
-        f"# コメント({len(comments)}件、いいね数の多い順)\n"
+        f"# Video information\n"
+        f"Countries where this video is trending (may include multiple countries): {countries_str}\n"
+        f"Primary languages of those countries (may include multiple languages): {langs_str}\n"
+        f"Title: {meta.get('title')}\n"
+        f"Description (first 500 characters): {description_block}\n\n"
+        f"# Comments ({len(comments)} comments, sorted by likes descending)\n"
         f"{comments_block}\n\n"
-        f"# 指示\n"
-        f"上記の動画情報・コメントを分析し、以下を生成してください:\n"
-        f"0. is_soccer_related: この動画がサッカー（FIFAワールドカップ含む）に"
-        f"関連する内容かどうかを true/false で判定してください。タイトル・説明文を"
-        f"主な根拠にし、コメントがあれば補助的に使ってください。"
-        f"検索キーワードに「World Cup」が含まれていても、クリケット・バスケットボール・"
-        f"バレーボール等の他競技の「World Cup」を冠した大会である場合は false としてください"
-        f"（例: ICC Women's T20 World Cup はクリケットなので false）。"
-        f"判断に迷う場合や情報が不十分な場合は true（除外しすぎない方を優先）としてください。"
-        f"relevance_reason にはその判定理由を日本語1文程度で書いてください。\n"
-        f"以降の1〜4は is_soccer_related が false の場合でも形式上埋めてください"
-        f"（コメントが無ければ sentiment は positive=0,negative=0,neutral=100、"
-        f"各リストは空配列で構いません）。\n"
-        f"1. sentiment: ポジティブ/ネガティブ/中立の比率(%)。合計が約100になるように。\n"
-        f"2. positive_themes / negative_themes: 主要な話題を、theme_ja(日本語)・"
-        f"theme_en(英語)・mention_count(言及したと思われるコメント数の概算)で。各最大5件。\n"
-        f"3. quotable_comments: 記事に引用して映える、いいね数が多く印象的なコメントを最大{MAX_QUOTES}件。"
-        f"original(原文そのまま)・translated_ja(日本語訳)・translated_en(英語訳)・"
-        f"author(投稿者名)・likes(入力のlikes値)・original_language(原文の言語コード)。\n"
-        f"4. mentioned_teams: コメントで言及されている『代表チーム』を最大{MAX_TEAMS}件。"
-        f"team は後段で言語をまたいで集計するため、必ず英語の代表チーム名/国名で正規化する"
-        f"(例: 'Argentina','Brazil','Japan','Morocco'。'日本'や'🇲🇽'やクラブ名ではなく代表名に寄せる)。"
-        f"sentiment はそのチームに対する全体の論調を 'positive'/'neutral'/'negative' のいずれかで。"
-        f"mention_count はそのチームに言及したと思われるコメント数の概算。"
-        f"代表チームへの言及が無ければ空配列で良い。\n"
-        f"コメントが少ない/分析困難な場合は、可能な範囲で返してください。"
+        f"# Instructions\n"
+        f"Analyze the video information and comments above and generate the following:\n"
+        f"0. is_soccer_related: Judge true/false for whether this video is related to soccer "
+        f"(including the FIFA World Cup). Use the title and description as the main evidence, "
+        f"and use comments as supporting evidence if available. Even if the search keyword contains "
+        f"'World Cup', set false when the video is about another sport's World Cup, such as cricket, "
+        f"basketball, or volleyball (example: ICC Women's T20 World Cup is cricket, so false). "
+        f"If you are unsure or information is insufficient, choose true to avoid over-exclusion. "
+        f"Write relevance_reason as about one sentence in Japanese explaining the judgment.\n"
+        f"For items 1 through 4 below, fill the fields for format consistency even when "
+        f"is_soccer_related is false. If there are no comments, sentiment may be "
+        f"positive=0, negative=0, neutral=100, and the lists may be empty arrays.\n"
+        f"1. sentiment: Positive/negative/neutral ratios (%), totaling roughly 100.\n"
+        f"2. positive_themes / negative_themes: Major topics with theme_ja (Japanese), "
+        f"theme_en (English), and mention_count (approximate number of comments that mention it). "
+        f"Maximum 5 items each.\n"
+        f"3. quotable_comments: Up to {MAX_QUOTES} comments that are impressive, highly liked, and good for article quotes. "
+        f"Include original (verbatim), translated_ja (Japanese translation), translated_en (English translation), "
+        f"author (poster name), likes (input likes value), and original_language (language code of the original).\n"
+        f"4. mentioned_teams: Up to {MAX_TEAMS} national teams mentioned in comments. "
+        f"Because team will be aggregated across languages downstream, always normalize it to an English national team name/country name "
+        f"(examples: 'Argentina', 'Brazil', 'Japan', 'Morocco'; use national team names, not local-language names, flags, or club names). "
+        f"For sentiment, use one of 'positive'/'neutral'/'negative' for the overall tone toward that team. "
+        f"mention_count is the approximate number of comments that appear to mention that team. "
+        f"If no national teams are mentioned, use an empty array.\n"
+        f"If there are few comments or the analysis is difficult, return the best possible result."
     )
 
 
 def _is_retryable_transient_error(msg: str) -> bool:
-    """429・タイムアウト・接続エラーなど「もう一度試せば直る可能性がある」エラーか判定する。
+    """Determine whether the error is likely transient and worth retrying, such as 429, timeout, or connection error.
 
-    openai公式SDKはタイムアウト時に openai.APITimeoutError を投げ、メッセージには
-    "Request timed out." のような文言が入る（実際に今回のハングで観測した文言）。
-    接続エラー(httpx.ConnectError等)も同様に一時的な問題である可能性が高いので
-    まとめてリトライ対象にする。
+    On timeout, the official openai SDK raises openai.APITimeoutError and the message contains text such as
+    "Request timed out." (the text observed in the actual hang). Connection errors such as httpx.ConnectError
+    are also likely to be temporary, so they are treated as retryable as well.
     """
     lowered = msg.lower()
     return (
@@ -275,12 +277,12 @@ def _is_retryable_transient_error(msg: str) -> bool:
 
 
 def _is_content_moderation_error(msg: str) -> bool:
-    """DashScope側のコンテンツモデレーション拒否かどうかを判定する。
+    """Determine whether this is a content moderation rejection by DashScope.
 
-    観測されたエラー文言に基づくヒューリスティックな判定
-    （例: "Input data may contain inappropriate content" / code=DataInspectionFailed）。
-    厳密な判定ではないが、429と違い「同じ入力をリトライしても結果は変わらない」
-    という運用上重要な性質があるため、無駄なリトライを避けるために区別する。
+    This is a heuristic based on observed error text (for example,
+    "Input data may contain inappropriate content" / code=DataInspectionFailed). It is not a strict
+    classifier, but unlike 429, retrying the same input will not change the result, which matters
+    operationally. Distinguish it to avoid wasted retries.
     """
     lowered = msg.lower()
     return (
@@ -292,15 +294,15 @@ def _is_content_moderation_error(msg: str) -> bool:
 
 
 def _call_json(client: OpenAI, model: str, system: str, user: str):
-    """response_format=json_objectでchat.completions.createを呼ぶ薄いラッパー。
+    """Thin wrapper around chat.completions.create with response_format=json_object.
 
-    enable_thinking=False を extra_body 経由で明示指定している。qwen-plus/qwen3-max等は
-    デフォルトでthinking無効だが、qwen3.7-plus等のhybrid thinkingモデル(デフォルトthinking
-    有効)を QWEN_CHAT_MODEL に指定した場合、thinking有効のままだと
-    response_format=json_object と併用できず400エラーになる（Alibaba公式ドキュメントに
-    明記）。enable_thinking はOpenAI標準パラメータではないため、OpenAI SDK経由では
-    extra_body に入れて渡す必要がある（同じくAlibaba公式ドキュメントの記載通り）。
-    thinkingがデフォルト無効なモデルに対しては無害（明示的にFalseにするだけ）。
+    enable_thinking=False is explicitly passed via extra_body. qwen-plus/qwen3-max and similar models
+    default to thinking disabled, but if a hybrid thinking model such as qwen3.7-plus (thinking enabled
+    by default) is specified in QWEN_CHAT_MODEL, leaving thinking enabled makes it incompatible with
+    response_format=json_object and causes a 400 error (as stated in Alibaba's official documentation).
+    Because enable_thinking is not a standard OpenAI parameter, it must be passed through extra_body when
+    using the OpenAI SDK (also as described in Alibaba's official documentation). For models where thinking
+    is disabled by default, this is harmless; it only explicitly sets False.
     """
     return client.chat.completions.create(
         model=model,
@@ -315,19 +317,17 @@ def _call_json(client: OpenAI, model: str, system: str, user: str):
 
 
 def _repair_json(client: OpenAI, broken_text: str) -> str:
-    """JSON構文エラー時、軽量モデルに修復を依頼する（Alibaba公式推奨パターン）。
+    """Ask a lightweight model to repair JSON syntax errors (Alibaba's recommended pattern).
 
-    FIX_MODEL(デフォルトqwen-flash)はデフォルトでthinking無効だが、環境変数で
-    別モデルに差し替えられた場合の保険として、こちらも明示的にFalseにしておく。
+    FIX_MODEL (default qwen-flash) has thinking disabled by default, but as a safeguard when it is
+    replaced with another model via environment variable, explicitly set it to False here as well.
     """
     resp = client.chat.completions.create(
         model=FIX_MODEL,
         messages=[
-            {"role": "system", "content": "あなたはJSON形式の専門家です。"
-                                            "ユーザーが渡す壊れたJSON文字列を、"
-                                            "有効なJSON形式に修復してください。"
-                                            "JSONオブジェクト単体のみを出力し、"
-                                            "説明文やコードブロック記法は付けないでください。"},
+            {"role": "system", "content": "You are a JSON formatting expert. "
+                                            "Repair the broken JSON string provided by the user into valid JSON. "
+                                            "Output only a single JSON object, with no explanatory text or code block syntax."},
             {"role": "user", "content": broken_text},
         ],
         response_format={"type": "json_object"},
@@ -339,20 +339,19 @@ def _repair_json(client: OpenAI, broken_text: str) -> str:
 def analyze_with_retry(client: OpenAI, prompt: str,
                         max_rate_retries: int = MAX_RATE_LIMIT_RETRIES,
                         max_schema_retries: int = MAX_SCHEMA_RETRIES):
-    """1動画を分析。429時は指数バックオフ、スキーマ不一致時は再生成。
+    """Analyze one video. Use exponential backoff for 429s and regenerate on schema mismatch.
 
-    戻り値: (CommentAnalysis or None, reason or None)
-      成功時は (CommentAnalysis, None)。
-      失敗時は (None, reason) で、reason は以下のいずれか:
-        - "content_moderation"     : DashScope側のコンテンツモデレーション拒否
-                                      (同じ入力のリトライは無意味なため即座に諦める)
-        - "rate_limit_exhausted"   : 429/タイムアウト/接続エラーが指定回数リトライしても
-                                      解消しなかった
-        - "schema_retry_exhausted" : JSON構文/スキーマ不一致が指定回数リトライしても解消しなかった
-        - "api_error:<詳細>"       : 上記以外のAPIエラー
+    Return value: (CommentAnalysis or None, reason or None)
+      On success: (CommentAnalysis, None).
+      On failure: (None, reason), where reason is one of:
+        - "content_moderation"     : Content moderation rejection by DashScope
+                                      (retrying the same input is meaningless, so give up immediately)
+        - "rate_limit_exhausted"   : 429/timeout/connection error did not resolve after the retry limit
+        - "schema_retry_exhausted" : JSON syntax/schema mismatch did not resolve after the retry limit
+        - "api_error:<details>"    : Any other API error
 
-    429・タイムアウト・接続エラー(通信の問題)とスキーマリトライ(モデル出力の質の問題)は
-    性質が違うので別カウンタにしている。
+    429/timeouts/connection errors (communication issues) and schema retries (model output quality issues)
+    have different characteristics, so they use separate counters.
     """
     schema_attempt = 0
     while schema_attempt <= max_schema_retries:
@@ -365,60 +364,60 @@ def analyze_with_retry(client: OpenAI, prompt: str,
             except Exception as e:  # noqa: BLE001
                 msg = str(e)
                 if _is_content_moderation_error(msg):
-                    print(f"  WARNING: コンテンツモデレーション拒否: {msg[:160]}", file=sys.stderr)
+                    print(f"  WARNING: Content moderation rejected the request: {msg[:160]}", file=sys.stderr)
                     return None, "content_moderation"
                 if _is_retryable_transient_error(msg) and rate_attempt < max_rate_retries - 1:
                     wait = 5 * (2 ** rate_attempt)
-                    print(f"  一時的なエラーの可能性({msg[:60]})。{wait}秒待機してリトライ... "
+                    print(f"  Possible transient error ({msg[:60]}). Waiting {wait} seconds before retrying... "
                           f"({rate_attempt + 1}/{max_rate_retries})")
                     time.sleep(wait)
                 elif _is_retryable_transient_error(msg):
-                    print(f"  ERROR: 分析失敗(リトライ上限): {msg[:160]}", file=sys.stderr)
+                    print(f"  ERROR: Analysis failed (retry limit reached): {msg[:160]}", file=sys.stderr)
                     return None, "rate_limit_exhausted"
                 else:
-                    print(f"  ERROR: 分析失敗: {msg[:160]}", file=sys.stderr)
+                    print(f"  ERROR: Analysis failed: {msg[:160]}", file=sys.stderr)
                     return None, f"api_error:{msg[:100]}"
 
         if raw is None:
             return None, "rate_limit_exhausted"
 
-        # JSON構文パース
+        # Parse JSON syntax.
         try:
             data = json.loads(raw)
         except json.JSONDecodeError:
-            print("  WARNING: JSON構文エラー。修復モデルで修復を試みます...", file=sys.stderr)
+            print("  WARNING: JSON syntax error. Trying to repair with the repair model...", file=sys.stderr)
             try:
                 fixed = _repair_json(client, raw)
                 data = json.loads(fixed)
             except Exception as e:  # noqa: BLE001
                 schema_attempt += 1
-                print(f"  WARNING: JSON修復も失敗(試行{schema_attempt}/{max_schema_retries}): "
+                print(f"  WARNING: JSON repair also failed (attempt {schema_attempt}/{max_schema_retries}): "
                       f"{str(e)[:160]}", file=sys.stderr)
                 continue
 
-        # こちらのPydanticモデルへバリデーション（DashScopeはスキーマを強制しないため必須）
+        # Validate against our Pydantic model (required because DashScope does not enforce the schema).
         try:
             return CommentAnalysis(**data), None
         except ValidationError as e:
             schema_attempt += 1
-            print(f"  WARNING: スキーマ不一致(試行{schema_attempt}/{max_schema_retries}): "
+            print(f"  WARNING: Schema mismatch (attempt {schema_attempt}/{max_schema_retries}): "
                   f"{str(e)[:300]}", file=sys.stderr)
             continue
 
-    print("  ERROR: スキーマ検証のリトライ上限に到達。スキップします。", file=sys.stderr)
+    print("  ERROR: Reached the schema validation retry limit. Skipping.", file=sys.stderr)
     return None, "schema_retry_exhausted"
 
 
 def resolve_dirs(date_str: str):
-    """日付文字列から入力ディレクトリ(Geminiフロー側, 読取専用)と
-    出力ディレクトリ(qwen_soccer側)を決める。"""
+    """Resolve the input directory (Gemini flow side, read-only) and output directory
+    (qwen_soccer side) from a date string."""
     input_dir = (SCRIPT_DIR / ".." / ".." / "soccer" / "data" / date_str).resolve()
     output_dir = (SCRIPT_DIR / "data" / date_str).resolve()
     return input_dir, output_dir
 
 
 def load_checkpoint(checkpoint_path: Path) -> dict:
-    """既存のチェックポイントを読み込む。無ければ空の状態を返す。"""
+    """Load an existing checkpoint, or return an empty state if it does not exist."""
     if not checkpoint_path.exists():
         return {"analyses": {}, "skipped": []}
     try:
@@ -428,13 +427,13 @@ def load_checkpoint(checkpoint_path: Path) -> dict:
         data.setdefault("skipped", [])
         return data
     except (json.JSONDecodeError, OSError) as e:
-        print(f"  WARNING: チェックポイント読み込み失敗、破棄して最初からやり直します: {e}",
+        print(f"  WARNING: Failed to read checkpoint; discarding it and starting over: {e}",
               file=sys.stderr)
         return {"analyses": {}, "skipped": []}
 
 
 def save_checkpoint(checkpoint_path: Path, state: dict) -> None:
-    """チェックポイントを保存する（一時ファイル→リネームでの原子的な書き込み）。"""
+    """Save a checkpoint (atomic write via temporary file -> rename)."""
     tmp_path = checkpoint_path.with_suffix(".tmp")
     with open(tmp_path, "w", encoding="utf-8") as f:
         json.dump(state, f, ensure_ascii=False)
@@ -442,28 +441,28 @@ def save_checkpoint(checkpoint_path: Path, state: dict) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Phase5 ステージ1: コメント感情分析(Qwen版)")
+    parser = argparse.ArgumentParser(description="Phase5 Stage 1: Comment sentiment analysis (Qwen version)")
     parser.add_argument("date", nargs="?", default=None,
-                         help="対象日付(YYYYMMDD)。省略時は今日")
+                         help="Target date (YYYYMMDD). Defaults to today if omitted")
     args = parser.parse_args()
 
     if not os.environ.get("DASHSCOPE_API_KEY"):
-        print("ERROR: DASHSCOPE_API_KEY が未設定です。", file=sys.stderr)
+        print("ERROR: DASHSCOPE_API_KEY is not set.", file=sys.stderr)
         return 1
 
     date_str = args.date or datetime.now().strftime("%Y%m%d")
     input_dir, output_dir = resolve_dirs(date_str)
 
     path = find_phase4_path(input_dir)
-    print(f"対象日付: {date_str}")
-    print(f"入力ファイル: {path}")
+    print(f"Target date: {date_str}")
+    print(f"Input file: {path}")
     with open(path, encoding="utf-8") as f:
         data = json.load(f)
     by_video = data.get("comments_by_video", {})
     if not by_video:
-        print("ERROR: comments_by_video が空です。", file=sys.stderr)
+        print("ERROR: comments_by_video is empty.", file=sys.stderr)
         return 1
-    print(f"対象動画: {len(by_video)}件 / 並列実行数: {MAX_WORKERS} / タイムアウト: {TIMEOUT_SECONDS}秒")
+    print(f"Target videos: {len(by_video)} / workers: {MAX_WORKERS} / timeout: {TIMEOUT_SECONDS} seconds")
 
     output_dir.mkdir(parents=True, exist_ok=True)
     checkpoint_path = output_dir / CHECKPOINT_FILENAME
@@ -472,7 +471,7 @@ def main() -> int:
     skipped = state["skipped"]
     already_done = set(analyses.keys()) | {s["video_id"] for s in skipped}
     if already_done:
-        print(f"  チェックポイントを検出: {len(already_done)}件は処理済みとしてスキップします。")
+        print(f"  Checkpoint detected: skipping {len(already_done)} already processed items.")
 
     client = make_client()
     lock = threading.Lock()
@@ -480,19 +479,19 @@ def main() -> int:
     total = len(items)
 
     def process_one(idx: int, vid: str, meta: dict):
-        """1動画分の分析を行い、結果をチェックポイントへ反映する（複数スレッドから呼ばれる）。
+        """Analyze one video and write the result back to the checkpoint (called from multiple threads).
 
-        Exception全般をここで捕まえて必ずチェックポイントに反映する。
-        1件の予期せぬバグ・異常系で他の完了済み分析結果が失われないようにするため。
-        （本物のCtrl+C(KeyboardInterrupt)やSystemExitはExceptionのサブクラスではない
-        ため、ここでは捕まえず正常にプロセス全体を中断できる。）
+        Catch general Exceptions here and always reflect them in the checkpoint, so that one unexpected
+        bug or abnormal case does not cause other completed analysis results to be lost. Real Ctrl+C
+        (KeyboardInterrupt) and SystemExit are not subclasses of Exception, so they are not caught here
+        and can correctly interrupt the whole process.
         """
         try:
             if not (meta.get("title") or "").strip():
                 with lock:
                     skipped.append({"video_id": vid, "reason": "no_title_no_judgeable_info"})
                     save_checkpoint(checkpoint_path, state)
-                print(f"[{idx}/{total}] {vid} スキップ (タイトルも無く判定材料が無い)")
+                print(f"[{idx}/{total}] {vid} skipped (no title and no judgeable information)")
                 return
 
             comments = meta.get("comments", []) or []
@@ -510,29 +509,28 @@ def main() -> int:
                     analyses[vid] = rec
                 save_checkpoint(checkpoint_path, state)
 
-            status = "OK" if result is not None else f"失敗({fail_reason})"
-            print(f"[{idx}/{total}] {vid} 完了: {status}")
+            status = "OK" if result is not None else f"failed({fail_reason})"
+            print(f"[{idx}/{total}] {vid} complete: {status}")
         except Exception as e:  # noqa: BLE001
-            # 想定外のバグ等でもここで打ち止めにし、他の動画の結果を道連れにしない
+            # Stop this item here even on unexpected bugs, and do not drag down other video results.
             with lock:
                 skipped.append({"video_id": vid, "reason": f"unexpected_error:{str(e)[:150]}"})
                 save_checkpoint(checkpoint_path, state)
-            print(f"[{idx}/{total}] {vid} 完了: 予期せぬエラー({str(e)[:150]})", file=sys.stderr)
+            print(f"[{idx}/{total}] {vid} complete: unexpected error ({str(e)[:150]})", file=sys.stderr)
 
     targets = [(i, vid, meta) for i, (vid, meta) in enumerate(items, 1) if vid not in already_done]
-    print(f"  今回処理する動画: {len(targets)}件（スキップ済み{len(already_done)}件を除く）")
+    print(f"  Videos to process in this run: {len(targets)} (excluding {len(already_done)} already skipped/processed items)")
 
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         futures = [executor.submit(process_one, idx, vid, meta) for idx, vid, meta in targets]
         try:
             for fut in as_completed(futures):
-                fut.result()  # 例外があればここで再送出される
+                fut.result()  # Re-raise exceptions here if any occurred.
         except KeyboardInterrupt:
-            # デフォルトのshutdown(wait=True)は未着手タスクもキューが空になるまで
-            # 処理し続けてしまい、Ctrl+Cへの反応が遅い。cancel_futures=Trueで
-            # 「未着手」のタスクだけキャンセルし、実行中のタスクの完了は待つ
-            # （実行中タスクは中断せず、チェックポイントへの反映を確実にするため）。
-            print("\n中断を検知しました。実行中のタスクの完了を待ち、未着手分はキャンセルします...",
+            # The default shutdown(wait=True) continues processing queued tasks until the queue is empty,
+            # making Ctrl+C slow to respond. Use cancel_futures=True to cancel only tasks that have not
+            # started, while still waiting for running tasks to finish so checkpoint updates are preserved.
+            print("\nInterrupt detected. Waiting for running tasks to finish and canceling tasks that have not started...",
                   file=sys.stderr)
             executor.shutdown(wait=True, cancel_futures=True)
             raise
@@ -551,24 +549,23 @@ def main() -> int:
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False)
 
-    print(f"\n分析完了: 成功{len(analyses)}件 / スキップ{len(skipped)}件")
+    print(f"\nAnalysis complete: {len(analyses)} succeeded / {len(skipped)} skipped")
     if skipped:
         from collections import Counter
         reason_counts = Counter(s["reason"] for s in skipped)
-        print("  内訳:")
+        print("  Breakdown:")
         for reason, cnt in reason_counts.most_common():
-            print(f"    {reason}: {cnt}件")
-    print(f"保存しました: {out_path}")
+            print(f"    {reason}: {cnt}")
+    print(f"Saved: {out_path}")
 
-    # 全件書き出しに成功したのでチェックポイントは削除
-    # （残しておくと、翌日以降に同じ日付で誤って再実行した際、意図せず前回結果を
-    #  引き継いでしまう恐れがあるため）
+    # Delete the checkpoint after successfully writing all results.
+    # Leaving it behind could accidentally carry over previous results when the same date is rerun later.
     try:
         checkpoint_path.unlink(missing_ok=True)
     except OSError:
         pass
 
-    print("次はステージ2でこれを videos.comment_analysis に投入します。")
+    print("Next, load this into videos.comment_analysis with stage 2.")
     return 0
 
 

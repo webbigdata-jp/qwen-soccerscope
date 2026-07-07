@@ -1,7 +1,7 @@
 [project]
 name = "qwen-soccer-pipeline"
 version = "0.1.0"
-description = "SoccerScope Qwen移植版 データパイプライン（embedding / MongoDB投入 / コメント感情分析）"
+description = "SoccerScope Qwen migration data pipeline (embedding / MongoDB loading / comment sentiment analysis)"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

@@ -1,31 +1,33 @@
 #!/bin/bash
 
-# 古いbuildと作業用venvを完全に削除（重要：使い回すと壊れる。後述）
+# Completely remove the old build directory and working venv.
+# Important: reusing them can break the build, as described later.
 deactivate
 rm -rf build .venv-fc
 
-# FCのランタイム(Python 3.12)に合わせ、pip同梱のvenvを作る
+# Create a venv that matches the FC runtime (Python 3.12), including bundled pip.
 uv venv .venv-fc --python 3.12 --seed
 source .venv-fc/bin/activate
 
-# ビルド用ディレクトリに必要なファイルだけコピー
+# Copy only the required files into the build directory.
 mkdir build
 cp main.py build/
 cp -r soccer_agent build/
 cp -r static build/
 rm -rf build/soccer_agent/__pycache__
 
-# npx タイアウト問題
+# Workaround for the npx timeout issue.
 npm install --prefix build mongodb-mcp-server
 rm -rf build/node_modules/@oven
 
 
-# build/直下に依存関係をインストール（venv内の"本物のpip"を使う。uv pipではない）
+# Install dependencies directly under build/.
+# Use the real pip inside the venv, not uv pip.
 cd build
 pip install -t . -r ../requirements.txt
 
-# zip化（コードパッケージのルートディレクトリで実行するのがコツ）
+# Create the zip archive.
+# The key is to run this from the code package root directory.
 zip -rq -y ../code.zip ./
 cd ..
 deactivate
-
